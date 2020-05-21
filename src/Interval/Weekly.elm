@@ -18,12 +18,20 @@ generate rrule =
 generateHelp : Recurrence -> Window -> Posix -> List Posix -> List Posix
 generateHelp rrule window current acc =
     let
-        next_ =
+        nextByDay =
+            -- This is not as performant as it could be.
+            -- We are checking every day within a given window.
+            -- This means we'll check 365 days to find a single yearly event.
             Time.Extra.add Time.Extra.Day 1 rrule.tzid current
 
         next =
-            if inWindow next_ window then
-                next_
+            if List.isEmpty rrule.byDay then
+                Time.Extra.add Time.Extra.Week rrule.interval rrule.tzid current
+
+            else if inWindow nextByDay window then
+                -- TODO check to see if this behaving correctly by adding tests
+                -- for rrule's with RULE:FREQ=WEEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
+                nextByDay
 
             else
                 bumpToNextWindow rrule current

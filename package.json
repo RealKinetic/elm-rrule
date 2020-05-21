@@ -1,0 +1,11 @@
+{
+  "name": "elm-rrule",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Coury Ditch <coury.ditch@realkinetic.com>",
+  "license": "MIT",
+  "dependencies": {
+    "luxon": "^1.24.1",
+    "rrule": "^2.6.4"
+  }
+}

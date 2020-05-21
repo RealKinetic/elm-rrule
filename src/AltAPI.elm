@@ -1,0 +1,69 @@
+--module AltAPI exposing (..)
+--
+--{-| Derived from <https://icalendar.org/rrule-tool.html>
+--
+--TODO is the API easier with Sum Types, or with a flat record cherry picking
+--the correct fields?
+--
+--The former would offer more precise parsing of "valid" rrules, but the latter
+--would be more lenient with mildly invalid rrules.
+--
+---}
+--
+---- Nested Freq
+--
+--import Date exposing (Date)
+--import Time exposing (Month, Posix, Weekday, Zone)
+--
+--
+--type alias RRule =
+--    { weekStart : Weekday
+--    , frequency : Frequency
+--    , untilCount : Maybe Time
+--    , interval : Int
+--    , exdates : Maybe (List Posix)
+--    , dtStart : Time
+--    , tzid : Zone
+--    }
+--
+--
+--type Frequency
+--    = Secondly
+--    | Minutely
+--    | Hourly
+--    | Daily
+--    | Weekly (List Weekday)
+--    | Monthly WithinMonth
+--    | Yearly Month WithinMonth
+--
+--
+--type Time
+--    = DateTime Posix
+--    | Date Date
+--
+--
+--type UntilCount
+--    = Count Int
+--    | Until Time
+--
+--
+--type WithinMonth
+--    = ByMonthDay (List Int) -- e.g. 4th Day, 23rd Day
+--    | ByDay (List OrdinalDay) -- e.g. 3rd Monday, Last Tuesday
+--
+--
+--type WithinYear
+--    = ByYearDay (List Int)
+--    | ByMonthDay WithinMonth
+--
+--
+--type OrdinalDay
+--    = First Weekday
+--    | Second Weekday
+--    | Third Weekday
+--    | Fourth Weekday
+--    | Fifth Weekday
+--    | Last Weekday
+
+
+module Main exposing (..)

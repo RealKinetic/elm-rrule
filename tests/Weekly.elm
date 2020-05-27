@@ -1,7 +1,7 @@
 module Weekly exposing (suite)
 
+import Common
 import Either exposing (Either(..))
-import Expect
 import Interval.Weekly as Weekly
 import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
 import Test exposing (..)
@@ -15,24 +15,8 @@ import TimeZone
 suite : Test
 suite =
     [ test1, test2, test3, test4_1, test4_2, test5, test6 ]
-        |> List.map toTest
+        |> List.map (Common.toTest Weekly.generate)
         |> describe "Weekly Tests"
-
-
-type alias RecurrenceTest =
-    { description : String
-    , rrule : List String
-    , recurrence : Recurrence
-    , dates : List Int
-    }
-
-
-toTest : RecurrenceTest -> Test
-toTest { description, rrule, recurrence, dates } =
-    test description <|
-        \_ ->
-            Weekly.generate recurrence
-                |> Expect.equal (List.map Time.millisToPosix dates)
 
 
 defaultRules : Recurrence

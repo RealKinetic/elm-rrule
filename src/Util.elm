@@ -57,6 +57,16 @@ gte t1 t2 =
     Time.posixToMillis t1 >= Time.posixToMillis t2
 
 
+gt : Posix -> Posix -> Bool
+gt t1 t2 =
+    Time.posixToMillis t1 > Time.posixToMillis t2
+
+
+lt : Posix -> Posix -> Bool
+lt t1 t2 =
+    Time.posixToMillis t1 < Time.posixToMillis t2
+
+
 {-| Not DST safe
 -}
 subtract : Int -> Posix -> Posix

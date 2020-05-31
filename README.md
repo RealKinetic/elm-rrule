@@ -23,5 +23,5 @@ and the time information is baked into DTSTART.
 
 - [ ] Daily
 - [x] Weekly
-- [ ] Monthly
+- [x] Monthly
 - [ ] Yearly

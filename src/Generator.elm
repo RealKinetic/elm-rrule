@@ -1,5 +1,6 @@
 module Generator exposing (..)
 
+import Interval.Daily as Daily
 import Interval.Monthly as Monthly
 import Interval.Weekly as Weekly
 import RRule exposing (Frequency(..), Recurrence)
@@ -153,7 +154,7 @@ withinByRules rrule time =
     in
     case rrule.frequency of
         Daily ->
-            True
+            check Daily.checker
 
         Weekly ->
             check Weekly.checker
@@ -162,4 +163,5 @@ withinByRules rrule time =
             check Monthly.checker
 
         Yearly ->
+            -- TODO
             True

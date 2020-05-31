@@ -5,6 +5,11 @@ import Time exposing (Month(..), Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
 
 
+notEmpty : List a -> Bool
+notEmpty =
+    List.isEmpty >> not
+
+
 freqToInterval : Frequency -> TE.Interval
 freqToInterval freq =
     case freq of

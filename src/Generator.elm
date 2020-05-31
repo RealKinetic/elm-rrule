@@ -1,12 +1,10 @@
 module Generator exposing (..)
 
-import Freq.Daily as Daily
-import Freq.Monthly as Monthly
-import Freq.Weekly as Weekly
+import By
 import Recurrence exposing (Frequency(..), Recurrence)
 import Time exposing (Posix)
 import Time.Extra as TE
-import Util exposing (Window)
+import Util exposing (Window, notEmpty)
 
 
 run : Recurrence -> List Posix
@@ -86,6 +84,10 @@ windowInterval rrule =
             TE.Year
 
 
+
+-- BYxx RULES
+
+
 {-|
 
         +----------+--------+--------+-------+-------+------+-------+------+
@@ -119,6 +121,65 @@ windowInterval rrule =
                special expand for YEARLY.
 
 -}
+withinByRules : Recurrence -> Posix -> Bool
+withinByRules rrule time =
+    let
+        apply f =
+            f rrule time
+
+        check { limits, expands } =
+            (not <| List.any (apply >> not) limits)
+                && List.all apply expands
+    in
+    check <| withinByRulesHelp rrule
+
+
+type alias Check =
+    Recurrence -> Posix -> Bool
+
+
+withinByRulesHelp : Recurrence -> { limits : List Check, expands : List Check }
+withinByRulesHelp rrule =
+    case rrule.frequency of
+        Daily ->
+            { limits = [ By.day, By.monthDay, By.month ]
+            , expands = []
+            }
+
+        Weekly ->
+            { limits = [ By.month ]
+            , expands = [ By.day ]
+            }
+
+        Monthly ->
+            -- See 'Note 1' above
+            case ( notEmpty rrule.byMonthDay, notEmpty rrule.byDay ) of
+                ( False, True ) ->
+                    { limits = []
+                    , expands = [ By.day ]
+                    }
+
+                ( True, False ) ->
+                    { limits = []
+                    , expands = [ By.monthDay ]
+                    }
+
+                ( True, True ) ->
+                    { limits = [ By.day ]
+                    , expands = [ By.monthDay ]
+                    }
+
+                ( False, False ) ->
+                    { limits = []
+                    , expands = []
+                    }
+
+        Yearly ->
+            { limits = []
+            , expands = []
+            }
+
+
 hasNoExpands : Recurrence -> Bool
 hasNoExpands rrule =
     case rrule.frequency of
@@ -134,34 +195,3 @@ hasNoExpands rrule =
 
         Yearly ->
             False
-
-
-
--- BYxx RULES
-
-
-type alias Check =
-    { isExcluded : Recurrence -> Posix -> Bool
-    , isIncluded : Recurrence -> Posix -> Bool
-    }
-
-
-withinByRules : Recurrence -> Posix -> Bool
-withinByRules rrule time =
-    let
-        check { isIncluded, isExcluded } =
-            isIncluded rrule time && (not <| isExcluded rrule time)
-    in
-    case rrule.frequency of
-        Daily ->
-            check Daily.checker
-
-        Weekly ->
-            check Weekly.checker
-
-        Monthly ->
-            check Monthly.checker
-
-        Yearly ->
-            -- TODO
-            True

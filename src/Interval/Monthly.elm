@@ -29,7 +29,7 @@ isExcluded rrule time =
 
 {-| MONTHLY is expanded when BYDAY, and BYMONTHDAY is defined
 
-NOTE: BYDAY limits if BYMONTHDAY is present, otherwise it expands.
+NOTE: BYDAY limits if BYMONTHDAY is also defined, otherwise BYDAY expands.
 
 -}
 isIncluded : Recurrence -> Posix -> Bool
@@ -47,6 +47,17 @@ isIncluded rrule time =
 
         ( True, True ) ->
             False
+
+
+isByMonthDay : Zone -> Posix -> Int -> Bool
+isByMonthDay zone time byMonthDay =
+    if byMonthDay > 0 then
+        Time.toDay zone time == byMonthDay
+
+    else
+        Time.toDay zone time
+            - Util.daysInMonth (Time.toYear zone time) (Time.toMonth zone time)
+            |> (==) (byMonthDay + 1)
 
 
 {-| Each BYDAY value can also be preceded by a positive (+n) or
@@ -69,21 +80,6 @@ MUST NOT be specified with a numeric value with the FREQ rule part
 set to YEARLY when the BYWEEKNO rule part is specified.
 
 -}
-isByMonthDay : Zone -> Posix -> Int -> Bool
-isByMonthDay zone time byMonthDay =
-    if byMonthDay > 0 then
-        Time.toDay zone time == byMonthDay
-
-    else
-        Util.daysInMonth (Time.toYear zone time) (Time.toMonth zone time)
-            - Time.toDay zone time
-            |> (==) (abs byMonthDay - 1)
-
-
-
--- 30 day month, 10th day == 20th from last
-
-
 isByDay : Zone -> Posix -> Either ( Int, Weekday ) Weekday -> Bool
 isByDay zone time byday =
     case byday of

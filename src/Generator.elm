@@ -15,6 +15,47 @@ run rrule =
     runHelp rrule (initWindow rrule) rrule.dtStart []
 
 
+runHelp : Recurrence -> Window -> Posix -> List Posix -> List Posix
+runHelp rrule window current acc =
+    let
+        nextByDay =
+            -- This is not as performant as it could be.
+            -- We are checking every day within a given window.
+            -- This means we'll check 365 days to find a single yearly event.
+            TE.add TE.Day 1 rrule.tzid current
+
+        nextTime =
+            if rrule |> hasNoExpands then
+                TE.add (Util.freqToInterval rrule.frequency)
+                    rrule.interval
+                    rrule.tzid
+                    current
+
+            else if Util.inWindow nextByDay window then
+                -- TODO check to see if this behaving correctly by adding tests
+                -- for rrule's with RULE:FREQ=WEEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
+                nextByDay
+
+            else
+                Util.bumpToNextWindow rrule current
+
+        nextWindow =
+            if Util.inWindow nextTime window then
+                window
+
+            else
+                Util.computeNextWindow rrule window
+    in
+    if Util.pastUntilCount rrule.untilCount current acc then
+        List.reverse acc
+
+    else if current |> withinByRules rrule then
+        runHelp rrule nextWindow nextTime (current :: acc)
+
+    else
+        runHelp rrule nextWindow nextTime acc
+
+
 
 -- WINDOW
 
@@ -42,47 +83,6 @@ windowInterval rrule =
 
         Yearly ->
             TE.Year
-
-
-runHelp : Recurrence -> Window -> Posix -> List Posix -> List Posix
-runHelp rrule window current acc =
-    let
-        nextByDay =
-            -- This is not as performant as it could be.
-            -- We are checking every day within a given window.
-            -- This means we'll check 365 days to find a single yearly event.
-            TE.add TE.Day 1 rrule.tzid current
-
-        nextTime =
-            if rrule |> hasNoExpands then
-                TE.add (Util.freqToInterval rrule.frequency)
-                    rrule.interval
-                    rrule.tzid
-                    current
-
-            else if Util.inWindow current window then
-                -- TODO check to see if this behaving correctly by adding tests
-                -- for rrule's with RULE:FREQ=WEEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
-                nextByDay
-
-            else
-                Util.bumpToNextWindow rrule current
-
-        nextWindow =
-            if Util.inWindow nextTime window then
-                window
-
-            else
-                Util.computeNextWindow rrule window
-    in
-    if Util.pastUntilCount rrule.untilCount current acc then
-        List.reverse acc
-
-    else if current |> withinByRules rrule then
-        runHelp rrule nextWindow nextTime (current :: acc)
-
-    else
-        runHelp rrule nextWindow nextTime acc
 
 
 {-|

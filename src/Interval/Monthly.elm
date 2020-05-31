@@ -43,7 +43,7 @@ isIncluded rrule time =
 
         ( False, False ) ->
             List.any (isByMonthDay rrule.tzid time) rrule.byMonthDay
-                && (not <| List.any (isByDay rrule.tzid time) rrule.byDay)
+                && List.any (isByDay rrule.tzid time) rrule.byDay
 
         ( True, True ) ->
             False
@@ -75,8 +75,13 @@ isByMonthDay zone time byMonthDay =
         Time.toDay zone time == byMonthDay
 
     else
-        -- TODO
-        True
+        Util.daysInMonth (Time.toYear zone time) (Time.toMonth zone time)
+            - Time.toDay zone time
+            |> (==) (abs byMonthDay - 1)
+
+
+
+-- 30 day month, 10th day == 20th from last
 
 
 isByDay : Zone -> Posix -> Either ( Int, Weekday ) Weekday -> Bool

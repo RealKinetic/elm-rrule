@@ -1,7 +1,7 @@
 module Util exposing (..)
 
 import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
-import Time exposing (Posix, Weekday(..), Zone)
+import Time exposing (Month(..), Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
 
 
@@ -169,3 +169,56 @@ bumpToNextWindow rrule time =
         , day = nextParts.day
     }
         |> TE.partsToPosix rrule.tzid
+
+
+
+-- Taken from justinmimbs/date source
+
+
+daysInMonth : Int -> Month -> Int
+daysInMonth year month =
+    case month of
+        Jan ->
+            31
+
+        Feb ->
+            if isLeapYear year then
+                29
+
+            else
+                28
+
+        Mar ->
+            31
+
+        Apr ->
+            30
+
+        May ->
+            31
+
+        Jun ->
+            30
+
+        Jul ->
+            31
+
+        Aug ->
+            31
+
+        Sep ->
+            30
+
+        Oct ->
+            31
+
+        Nov ->
+            30
+
+        Dec ->
+            31
+
+
+isLeapYear : Int -> Bool
+isLeapYear y =
+    modBy 4 y == 0 && modBy 100 y /= 0 || modBy 400 y == 0

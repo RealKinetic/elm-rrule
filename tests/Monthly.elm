@@ -13,10 +13,15 @@ suite =
     Common.test "Monthly Tests"
         [ test1
         , test2
-
-        --, test3
-        --, test4
-        --, test5
+        , test3
+        , test4
+        , test5
+        , test6
+        , test7
+        , test8
+        , test9
+        , test10
+        , test11
         ]
 
 
@@ -41,8 +46,8 @@ defaultRules =
     DTSTART;TZID=America/New_York:19970905T090000
     RRULE:FREQ=MONTHLY;COUNT=10;BYDAY=1FR
 
-    (1997 9:00 AM EDT) September 5;October 3; November 7;December 5;January 2;
-    February 6;March 6;April 3;May 1;June 5
+    (1997 9:00 AM EDT) September 5;October 3; November 7;December 5;
+    January 2; February 6;March 6;April 3;May 1;June 5
 
 -}
 test1 =
@@ -152,62 +157,104 @@ test3 =
 
 -}
 test4 =
-    { description = "Weekly for 10 occurrences"
+    { description = "Monthly on the second-to-last Monday of the month for 6 months"
     , rrule =
-        [ "DTSTART;TZID=America/New_York:19970902T090000"
-        , "RRULE:FREQ=WEEKLY;COUNT=10"
+        [ "DTSTART;TZID=America/New_York:19970922T090000"
+        , "RRULE:FREQ=MONTHLY;COUNT=6;BYDAY=-2MO"
         ]
     , recurrence =
         { defaultRules
-            | untilCount = Just (Count 10)
+            | untilCount = Just (Count 6)
+            , dtStart = Time.millisToPosix 874933200000
+            , byDay = [ Left ( -2, Mon ) ]
         }
     , dates =
-        [ 873205200000
-        , 873810000000
-        , 874414800000
-        , 875019600000
-        , 875624400000
-        , 876229200000
-        , 876834000000
-        , 877438800000
-        , 878047200000
-        , 878652000000
+        [ 874933200000
+        , 877352400000
+        , 879775200000
+        , 882799200000
+        , 885218400000
+        , 887637600000
         ]
     }
 
 
 {-| Monthly on the third-to-the-last day of the month, forever:
 
-           DTSTART;TZID=America/New_York:19970928T090000
-           RRULE:FREQ=MONTHLY;BYMONTHDAY=-3
+        DTSTART;TZID=America/New_York:19970928T090000
+        RRULE:FREQ=MONTHLY;BYMONTHDAY=-3;COUNT=50
 
            ==> (1997 9:00 AM EDT) September 28
                (1997 9:00 AM EST) October 29;November 28;December 29
                (1998 9:00 AM EST) January 29;February 26
                ...
 
+NOTE: I cap this at 50 count
+
 -}
 test5 =
-    { description = "Weekly for 10 occurrences"
+    { description = "Monthly on the third-to-the-last day of the month 50 times"
     , rrule =
-        [ "DTSTART;TZID=America/New_York:19970902T090000"
-        , "RRULE:FREQ=WEEKLY;COUNT=10"
+        [ "DTSTART;TZID=America/New_York:19970928T090000"
+        , "RRULE:FREQ=MONTHLY;BYMONTHDAY=-3;COUNT=50"
         ]
     , recurrence =
         { defaultRules
-            | untilCount = Just (Count 10)
+            | untilCount = Just (Count 50)
+            , dtStart = Time.millisToPosix 875451600000
+            , byMonthDay = [ -3 ]
         }
     , dates =
-        [ 873205200000
-        , 873810000000
-        , 874414800000
-        , 875019600000
-        , 875624400000
-        , 876229200000
-        , 876834000000
-        , 877438800000
-        , 878047200000
-        , 878652000000
+        [ 875451600000
+        , 878133600000
+        , 880725600000
+        , 883404000000
+        , 886082400000
+        , 888501600000
+        , 891180000000
+        , 893768400000
+        , 896446800000
+        , 899038800000
+        , 901717200000
+        , 904395600000
+        , 906987600000
+        , 909669600000
+        , 912261600000
+        , 914940000000
+        , 917618400000
+        , 920037600000
+        , 922716000000
+        , 925304400000
+        , 927982800000
+        , 930574800000
+        , 933253200000
+        , 935931600000
+        , 938523600000
+        , 941202000000
+        , 943797600000
+        , 946476000000
+        , 949154400000
+        , 951660000000
+        , 954338400000
+        , 956926800000
+        , 959605200000
+        , 962197200000
+        , 964875600000
+        , 967554000000
+        , 970146000000
+        , 972828000000
+        , 975420000000
+        , 978098400000
+        , 980776800000
+        , 983196000000
+        , 985874400000
+        , 988462800000
+        , 991141200000
+        , 993733200000
+        , 996411600000
+        , 999090000000
+        , 1001682000000
+        , 1004364000000
         ]
     }
 
@@ -223,26 +270,28 @@ test5 =
 
 -}
 test6 =
-    { description = "Weekly for 10 occurrences"
+    { description = "Monthly on the 2nd and 15th of the month for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
-        , "RRULE:FREQ=WEEKLY;COUNT=10"
+        , "RRULE:FREQ=MONTHLY;COUNT=10;BYMONTHDAY=2,15"
         ]
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 10)
+            , dtStart = Time.millisToPosix 873205200000
+            , byMonthDay = [ 2, 15 ]
         }
     , dates =
         [ 873205200000
-        , 873810000000
-        , 874414800000
-        , 875019600000
-        , 875624400000
-        , 876229200000
-        , 876834000000
-        , 877438800000
-        , 878047200000
-        , 878652000000
+        , 874328400000
+        , 875797200000
+        , 876920400000
+        , 878479200000
+        , 879602400000
+        , 881071200000
+        , 882194400000
+        , 883749600000
+        , 884872800000
         ]
     }
 
@@ -260,12 +309,92 @@ test6 =
 test7 =
     { description = "Weekly for 10 occurrences"
     , rrule =
-        [ "DTSTART;TZID=America/New_York:19970902T090000"
-        , "RRULE:FREQ=WEEKLY;COUNT=10"
+        [ "DTSTART;TZID=America/New_York:19970930T090000"
+        , "RRULE:FREQ=MONTHLY;COUNT=10;BYMONTHDAY=1,-1"
         ]
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 10)
+            , dtStart = Time.millisToPosix 875624400000
+            , byMonthDay = [ 1, -1 ]
+        }
+    , dates =
+        [ 875624400000
+        , 875710800000
+        , 878306400000
+        , 878392800000
+        , 880898400000
+        , 880984800000
+        , 883576800000
+        , 883663200000
+        , 886255200000
+        , 886341600000
+        ]
+    }
+
+
+{-| Every 18 months on the 10th thru 15th of the month for 10 occurrences:
+
+           DTSTART;TZID=America/New_York:19970910T090000
+           RRULE:FREQ=MONTHLY;INTERVAL=18;COUNT=10;BYMONTHDAY=10,11,12,13,14,15
+
+           ==> (1997 9:00 AM EDT) September 10,11,12,13,14,15
+               (1999 9:00 AM EST) March 10,11,12,13
+
+-}
+test8 =
+    { description = "Every 18 months on the 10th thru 15th of the month for 10 occurrences"
+    , rrule =
+        [ "DTSTART;TZID=America/New_York:19970910T090000"
+        , "RRULE:FREQ=MONTHLY;INTERVAL=18;COUNT=10;BYMONTHDAY=10,11,12,13,14,15"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 10)
+            , interval = 18
+            , dtStart = Time.millisToPosix 873896400000
+            , byMonthDay = [ 10, 11, 12, 13, 14, 15 ]
+        }
+    , dates =
+        [ 873896400000
+        , 873982800000
+        , 874069200000
+        , 874155600000
+        , 874242000000
+        , 874328400000
+        , 921074400000
+        , 921160800000
+        , 921247200000
+        , 921333600000
+        ]
+    }
+
+
+{-| Every Tuesday, every other month:
+
+           DTSTART;TZID=America/New_York:19970902T090000
+           RRULE:FREQ=MONTHLY;INTERVAL=2;BYDAY=TU
+
+           ==> (1997 9:00 AM EDT) September 2,9,16,23,30
+               (1997 9:00 AM EST) November 4,11,18,25
+               (1998 9:00 AM EST) January 6,13,20,27;March 3,10,17,24,31
+               ...
+
+NOTE: I cap this at 50 count
+
+-}
+test9 =
+    { description = "Every Tuesday, every other month"
+    , rrule =
+        [ "DTSTART;TZID=America/New_York:19970902T090000"
+        , "RRULE:FREQ=MONTHLY;INTERVAL=2;BYDAY=TU;COUNT=50"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 50)
+            , interval = 2
+            , dtStart = Time.millisToPosix 873205200000
+            , byDay = [ Right Tue ]
         }
     , dates =
         [ 873205200000
@@ -273,66 +402,137 @@ test7 =
         , 874414800000
         , 875019600000
         , 875624400000
-        , 876229200000
-        , 876834000000
-        , 877438800000
-        , 878047200000
         , 878652000000
+        , 879256800000
+        , 879861600000
+        , 880466400000
+        , 884095200000
+        , 884700000000
+        , 885304800000
+        , 885909600000
+        , 888933600000
+        , 889538400000
+        , 890143200000
+        , 890748000000
+        , 891352800000
+        , 894373200000
+        , 894978000000
+        , 895582800000
+        , 896187600000
+        , 899816400000
+        , 900421200000
+        , 901026000000
+        , 901630800000
+        , 904654800000
+        , 905259600000
+        , 905864400000
+        , 906469200000
+        , 907074000000
+        , 910101600000
+        , 910706400000
+        , 911311200000
+        , 911916000000
+        , 915544800000
+        , 916149600000
+        , 916754400000
+        , 917359200000
+        , 920383200000
+        , 920988000000
+        , 921592800000
+        , 922197600000
+        , 922802400000
+        , 925822800000
+        , 926427600000
+        , 927032400000
+        , 927637200000
+        , 931266000000
+        , 931870800000
         ]
     }
 
 
+{-| Every Friday the 13th, forever:
 
---{-| Every 18 months on the 10th thru 15th of the month for 10
---occurrences:
---
---           DTSTART;TZID=America/New_York:19970910T090000
---           RRULE:FREQ=MONTHLY;INTERVAL=18;COUNT=10;BYMONTHDAY=10,11,12,
---            13,14,15
---
---           ==> (1997 9:00 AM EDT) September 10,11,12,13,14,15
---               (1999 9:00 AM EST) March 10,11,12,13
---
----}
---
---
---{-| Every Tuesday, every other month:
---
---           DTSTART;TZID=America/New_York:19970902T090000
---           RRULE:FREQ=MONTHLY;INTERVAL=2;BYDAY=TU
---
---           ==> (1997 9:00 AM EDT) September 2,9,16,23,30
---               (1997 9:00 AM EST) November 4,11,18,25
---               (1998 9:00 AM EST) January 6,13,20,27;March 3,10,17,24,31
---               ...
---
----}
---
---
---{-| Every Friday the 13th, forever:
---
---           DTSTART;TZID=America/New_York:19970902T090000
---           EXDATE;TZID=America/New_York:19970902T090000
---           RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13
---
---           ==> (1998 9:00 AM EST) February 13;March 13;November 13
---               (1999 9:00 AM EDT) August 13
---               (2000 9:00 AM EDT) October 13
---               ...
---
----}
---
---
---{-| The first Saturday that follows the first Sunday of the month,
---forever:
---
---           DTSTART;TZID=America/New_York:19970913T090000
---           RRULE:FREQ=MONTHLY;BYDAY=SA;BYMONTHDAY=7,8,9,10,11,12,13
---
---           ==> (1997 9:00 AM EDT) September 13;October 11
---               (1997 9:00 AM EST) November 8;December 13
---               (1998 9:00 AM EST) January 10;February 7;March 7
---               (1998 9:00 AM EDT) April 11;May 9;June 13...
---               ...
---
----}
+           DTSTART;TZID=America/New_York:19970902T090000
+
+           TODO why is this exdate in here?
+           EXDATE;TZID=America/New_York:19970902T090000
+           RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13
+
+           ==> (1998 9:00 AM EST) February 13;March 13;November 13
+               (1999 9:00 AM EDT) August 13
+               (2000 9:00 AM EDT) October 13
+               ...
+
+NOTE: I cap this at 10 count
+
+-}
+test10 =
+    { description = "Every Friday the 13th"
+    , rrule =
+        [ "DTSTART;TZID=America/New_York:19970902T090000"
+        , "RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13;COUNT=10"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 10)
+            , dtStart = Time.millisToPosix 887378400000
+            , byMonthDay = [ 13 ]
+            , byDay = [ Right Fri ]
+        }
+    , dates =
+        [ 887378400000
+        , 889797600000
+        , 910965600000
+        , 934549200000
+        , 971442000000
+        , 987166800000
+        , 995029200000
+        , 1031922000000
+        , 1039788000000
+        , 1055509200000
+        ]
+    }
+
+
+{-| The first Saturday that follows the first Sunday of the month,
+forever:
+
+           DTSTART;TZID=America/New_York:19970913T090000
+           RRULE:FREQ=MONTHLY;BYDAY=SA;BYMONTHDAY=7,8,9,10,11,12,13
+
+           ==> (1997 9:00 AM EDT) September 13;October 11
+               (1997 9:00 AM EST) November 8;December 13
+               (1998 9:00 AM EST) January 10;February 7;March 7
+               (1998 9:00 AM EDT) April 11;May 9;June 13...
+               ...
+
+NOTE: I cap this at 10 count
+
+-}
+test11 =
+    { description = "The first Saturday that follows the first Sunday of the month"
+    , rrule =
+        [ "DTSTART;TZID=America/New_York:19970913T090000"
+        , "RRULE:FREQ=MONTHLY;BYDAY=SA;BYMONTHDAY=7,8,9,10,11,12,13;COUNT=10"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 10)
+            , dtStart = Time.millisToPosix 874155600000
+            , byMonthDay = [ 7, 8, 9, 10, 11, 12, 13 ]
+            , byDay = [ Right Sat ]
+        }
+    , dates =
+        [ 874155600000
+        , 876574800000
+        , 878997600000
+        , 882021600000
+        , 884440800000
+        , 886860000000
+        , 889279200000
+        , 892299600000
+        , 894718800000
+        , 897742800000
+        ]
+    }

@@ -1,4 +1,4 @@
-module Interval.Daily exposing (..)
+module Freq.Daily exposing (..)
 
 import Date
 import Either exposing (Either(..))

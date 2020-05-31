@@ -1,8 +1,8 @@
 module Generator exposing (..)
 
-import Interval.Daily as Daily
-import Interval.Monthly as Monthly
-import Interval.Weekly as Weekly
+import Freq.Daily as Daily
+import Freq.Monthly as Monthly
+import Freq.Weekly as Weekly
 import RRule exposing (Frequency(..), Recurrence)
 import Time exposing (Posix)
 import Time.Extra as TE

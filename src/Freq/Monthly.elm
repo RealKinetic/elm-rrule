@@ -1,4 +1,4 @@
-module Interval.Monthly exposing (..)
+module Freq.Monthly exposing (..)
 
 import Date
 import Either exposing (Either(..))

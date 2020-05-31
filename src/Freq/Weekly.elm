@@ -1,4 +1,4 @@
-module Interval.Weekly exposing (checker)
+module Freq.Weekly exposing (checker)
 
 import Date
 import Either exposing (Either(..))

@@ -1,9 +1,7 @@
-module Weekly exposing (suite)
+module Examples.Weekly exposing (..)
 
-import Common
 import Either exposing (Either(..))
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
-import Test exposing (..)
 import Time exposing (Weekday(..))
 import TimeZone
 
@@ -11,19 +9,6 @@ import TimeZone
 {-| Tests are based on the examples in the iCalendar Spec
 <https://tools.ietf.org/html/rfc5545#section-3.8.5.3>
 -}
-suite : Test
-suite =
-    Common.test "Weekly Tests"
-        [ test1
-        , test2
-        , test3
-        , test4_1
-        , test4_2
-        , test5
-        , test6
-        ]
-
-
 defaultRules : Recurrence
 defaultRules =
     { weekStart = Mon
@@ -49,7 +34,7 @@ defaultRules =
      (1997 9:00 AM EST)October 28;November 4
 
 -}
-test1 =
+example1 =
     { description = "Weekly for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -83,7 +68,7 @@ test1 =
      (1997 9:00 AM EST)October 28;November 4,11,18,25;December 2,9,16,23;
 
 -}
-test2 =
+example2 =
     { description = "Weekly until December 24, 1997"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -125,7 +110,7 @@ test2 =
     (1998 9:00 AM EST)January 6,20;
 
 -}
-test3 =
+example3 =
     { description = "Every other week 11 occurences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -161,7 +146,7 @@ RRULE:FREQ=WEEKLY;UNTIL=19971007T000000Z;WKST=SU;BYDAY=TU,TH
 (1997 9:00 AM EDT)September 2,4,9,11,16,18,23,25,30;October 2
 
 -}
-test4_1 =
+example4_1 =
     { description = "Weekly on Tuesday and Thursday for 5 weeks w/ UNTIL"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -196,7 +181,7 @@ RRULE:FREQ=WEEKLY;COUNT=10;WKST=SU;BYDAY=TU,TH
 (1997 9:00 AM EDT)September 2,4,9,11,16,18,23,25,30;October 2
 
 -}
-test4_2 =
+example4_2 =
     { description = "Weekly on Tuesday and Thursday for 5 weeks w/ COUNT"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -232,7 +217,7 @@ test4_2 =
     (1997 9:00 AM EST)October 27,29,31;November 10,12,14,24,26,28;December 8,10,12,22
 
 -}
-test5 =
+example5 =
     { description = "Every other week on Monday, Wednesday and Friday until December 24, 1997, but starting on Tuesday, September 2, 1997"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -282,7 +267,7 @@ test5 =
     (1997 9:00 AM EDT)September 2,4,16,18,30;October 2,14,16
 
 -}
-test6 =
+example6 =
     { description = "Every other week on Tuesday and Thursday, for 8 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"

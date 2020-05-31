@@ -1,28 +1,9 @@
-module Monthly exposing (..)
+module Examples.Monthly exposing (..)
 
-import Common
 import Either exposing (Either(..))
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
-import Test exposing (..)
 import Time exposing (Weekday(..))
 import TimeZone
-
-
-suite : Test
-suite =
-    Common.test "Monthly Tests"
-        [ test1
-        , test2
-        , test3
-        , test4
-        , test5
-        , test6
-        , test7
-        , test8
-        , test9
-        , test10
-        , test11
-        ]
 
 
 defaultRules : Recurrence
@@ -50,7 +31,7 @@ defaultRules =
     January 2; February 6;March 6;April 3;May 1;June 5
 
 -}
-test1 =
+example1 =
     { description = "Monthly on the first Friday for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970905T090000"
@@ -86,7 +67,7 @@ test1 =
     (1997 9:00 AM EST) November 7; December 5
 
 -}
-test2 =
+example2 =
     { description = "Monthly on the first Friday until December 24, 1997:"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970905T090000"
@@ -116,7 +97,7 @@ occurrences:
     September 7, 28; November 2, 30; January 4, 25; March 1, 29; May 3, 31
 
 -}
-test3 =
+example3 =
     { description = "Every other month on the first and last Sunday of the month for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970907T090000"
@@ -156,7 +137,7 @@ test3 =
            (1998 9:00 AM EST) January 19;February 16
 
 -}
-test4 =
+example4 =
     { description = "Monthly on the second-to-last Monday of the month for 6 months"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970922T090000"
@@ -192,7 +173,7 @@ test4 =
 NOTE: I cap this at 10 count
 
 -}
-test5 =
+example5 =
     { description = "Monthly on the third-to-the-last day of the month 50 times"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970928T090000"
@@ -229,7 +210,7 @@ test5 =
                (1998 9:00 AM EST) January 2,15
 
 -}
-test6 =
+example6 =
     { description = "Monthly on the 2nd and 15th of the month for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -266,7 +247,7 @@ test6 =
                (1998 9:00 AM EST) January 1,31;February 1
 
 -}
-test7 =
+example7 =
     { description = "Weekly for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970930T090000"
@@ -302,7 +283,7 @@ test7 =
                (1999 9:00 AM EST) March 10,11,12,13
 
 -}
-test8 =
+example8 =
     { description = "Every 18 months on the 10th thru 15th of the month for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970910T090000"
@@ -343,7 +324,7 @@ test8 =
 NOTE: I cap this at 10 count
 
 -}
-test9 =
+example9 =
     { description = "Every Tuesday, every other month"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -387,7 +368,7 @@ test9 =
 NOTE: I cap this at 10 count
 
 -}
-test10 =
+example10 =
     { description = "Every Friday the 13th"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -430,7 +411,7 @@ forever:
 NOTE: I cap this at 10 count
 
 -}
-test11 =
+example11 =
     { description = "The first Saturday that follows the first Sunday of the month"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970913T090000"

@@ -1,22 +1,8 @@
-module Daily exposing (..)
+module Examples.Daily exposing (..)
 
-import Common
-import Either exposing (Either(..))
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
-import Test exposing (..)
 import Time exposing (Weekday(..))
 import TimeZone
-
-
-suite : Test
-suite =
-    Common.test "Daily Tests"
-        [ test1
-        , test2
-        , test3
-        , test4
-        , test5
-        ]
 
 
 defaultRules : Recurrence
@@ -43,7 +29,7 @@ defaultRules =
        ==> (1997 9:00 AM EDT) September 2-11
 
 -}
-test1 =
+example1 =
     { description = "Daily for 10 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -79,7 +65,7 @@ test1 =
 NOTE: Differs from original in spec by end slightly sooner UNTIL date.
 
 -}
-test2 =
+example2 =
     { description = "Daily until December 24, 1997"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -108,7 +94,7 @@ test2 =
 NOTE: Capped at 10 count
 
 -}
-test3 =
+example3 =
     { description = "Every other day"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -142,7 +128,7 @@ test3 =
     ==> (1997 9:00 AM EDT) September 2,12,22; October 2,12
 
 -}
-test4 =
+example4 =
     { description = "Every 10 days, 5 occurrences"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970902T090000"
@@ -173,7 +159,7 @@ test4 =
                (2000 9:00 AM EST)January 1-31
 
 -}
-test5 =
+example5 =
     { description = "Every day in January, for 3 years"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19980101T090000"

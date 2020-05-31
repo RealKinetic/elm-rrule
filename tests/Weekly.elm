@@ -24,7 +24,7 @@ defaultRules =
     { weekStart = Mon
     , frequency = Weekly
     , interval = 1
-    , dtStart = Time.millisToPosix 0
+    , dtStart = Time.millisToPosix 873205200000
     , tzid = TimeZone.america__new_york ()
     , untilCount = Nothing
     , byDay = []
@@ -53,7 +53,6 @@ test1 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 10)
-            , dtStart = Time.millisToPosix 873205200000
         }
     , dates =
         [ 873205200000
@@ -88,7 +87,6 @@ test2 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Until <| Time.millisToPosix 882921600000)
-            , dtStart = Time.millisToPosix 873205200000
         }
     , dates =
         [ 873205200000
@@ -131,7 +129,6 @@ test3 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 11)
-            , dtStart = Time.millisToPosix 873205200000
             , weekStart = Sun
             , interval = 2
         }
@@ -168,7 +165,6 @@ test4_1 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Until <| Time.millisToPosix 876182400000)
-            , dtStart = Time.millisToPosix 873205200000
             , weekStart = Sun
             , byDay = [ Right Tue, Right Thu ]
         }
@@ -204,7 +200,6 @@ test4_2 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 10)
-            , dtStart = Time.millisToPosix 873205200000
             , weekStart = Sun
             , byDay = [ Right Tue, Right Thu ]
         }
@@ -241,7 +236,6 @@ test5 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Until <| Time.millisToPosix 882921600000)
-            , dtStart = Time.millisToPosix 873205200000
             , weekStart = Sun
             , byDay = [ Right Mon, Right Wed, Right Fri ]
             , interval = 2
@@ -292,7 +286,6 @@ test6 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 8)
-            , dtStart = Time.millisToPosix 873205200000
             , weekStart = Sun
             , byDay = [ Right Tue, Right Thu ]
             , interval = 2

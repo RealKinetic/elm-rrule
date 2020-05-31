@@ -1,15 +1,42 @@
 module Interval.Monthly exposing (..)
 
+import Date
 import Either exposing (Either(..))
+import Generator
 import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
 import Time exposing (Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
-import Util
+import Util exposing (Window)
 
 
 generate : Recurrence -> List Posix
 generate rrule =
-    []
+    -- TODO Shouldn't assume dtStart is a valid instance time.
+    -- Need to validate first and find the first valid instance time if necessary.
+    Generator.run rrule (withinByRules rrule)
+
+
+
+-- Window Helpers
+
+
+withinByRules : Recurrence -> Posix -> Bool
+withinByRules rrule current =
+    checkExpand rrule current && checkLimit rrule current
+
+
+checkExpand : Recurrence -> Posix -> Bool
+checkExpand rrule time =
+    False
+
+
+checkLimit : Recurrence -> Posix -> Bool
+checkLimit rrule time =
+    False
+
+
+
+-- BYxx PROPERTIES
 
 
 {-| Each BYDAY value can also be preceded by a positive (+n) or

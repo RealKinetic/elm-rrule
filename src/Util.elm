@@ -1,6 +1,6 @@
 module Util exposing (..)
 
-import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
+import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
 import Time exposing (Month(..), Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
 

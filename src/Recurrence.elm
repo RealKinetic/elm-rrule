@@ -1,4 +1,4 @@
-module RRule exposing (..)
+module Recurrence exposing (..)
 
 import Date exposing (Date, Month)
 import Either exposing (Either)

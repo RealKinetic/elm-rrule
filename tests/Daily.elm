@@ -2,7 +2,7 @@ module Daily exposing (..)
 
 import Common
 import Either exposing (Either(..))
-import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
+import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
 import Test exposing (..)
 import Time exposing (Weekday(..))
 import TimeZone

@@ -2,7 +2,7 @@ module Common exposing (..)
 
 import Expect
 import Generator
-import RRule exposing (Recurrence)
+import Recurrence exposing (Recurrence)
 import Test exposing (Test, describe)
 import Time exposing (Posix)
 

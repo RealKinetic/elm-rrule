@@ -3,7 +3,7 @@ module Generator exposing (..)
 import Freq.Daily as Daily
 import Freq.Monthly as Monthly
 import Freq.Weekly as Weekly
-import RRule exposing (Frequency(..), Recurrence)
+import Recurrence exposing (Frequency(..), Recurrence)
 import Time exposing (Posix)
 import Time.Extra as TE
 import Util exposing (Window)

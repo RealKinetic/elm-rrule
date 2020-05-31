@@ -1,16 +1,22 @@
 module Generator exposing (..)
 
+import Interval.Monthly as Monthly
+import Interval.Weekly as Weekly
 import RRule exposing (Frequency(..), Recurrence)
 import Time exposing (Posix)
 import Time.Extra as TE
 import Util exposing (Window)
 
 
-run : Recurrence -> (Posix -> Bool) -> List Posix
-run rrule withinByRules =
+run : Recurrence -> List Posix
+run rrule =
     -- TODO Shouldn't assume dtStart is a valid instance time.
     -- Need to validate first and find the first valid instance time if necessary.
-    runHelp rrule (initWindow rrule) withinByRules rrule.dtStart []
+    runHelp rrule (initWindow rrule) rrule.dtStart []
+
+
+
+-- WINDOW
 
 
 initWindow : Recurrence -> Window
@@ -38,8 +44,8 @@ windowInterval rrule =
             TE.Year
 
 
-runHelp : Recurrence -> Window -> (Posix -> Bool) -> Posix -> List Posix -> List Posix
-runHelp rrule window withinByRules current acc =
+runHelp : Recurrence -> Window -> Posix -> List Posix -> List Posix
+runHelp rrule window current acc =
     let
         nextByDay =
             -- This is not as performant as it could be.
@@ -54,7 +60,7 @@ runHelp rrule window withinByRules current acc =
                     rrule.tzid
                     current
 
-            else if Util.inWindow nextByDay window then
+            else if Util.inWindow current window then
                 -- TODO check to see if this behaving correctly by adding tests
                 -- for rrule's with RULE:FREQ=WEEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
                 nextByDay
@@ -68,18 +74,15 @@ runHelp rrule window withinByRules current acc =
 
             else
                 Util.computeNextWindow rrule window
-
-        runNext =
-            runHelp rrule nextWindow withinByRules nextTime
     in
     if Util.pastUntilCount rrule.untilCount current acc then
         List.reverse acc
 
-    else if withinByRules current then
-        runNext (current :: acc)
+    else if current |> withinByRules rrule then
+        runHelp rrule nextWindow nextTime (current :: acc)
 
     else
-        runNext acc
+        runHelp rrule nextWindow nextTime acc
 
 
 {-|
@@ -118,14 +121,45 @@ runHelp rrule window withinByRules current acc =
 hasNoExpands : Recurrence -> Bool
 hasNoExpands rrule =
     case rrule.frequency of
-        RRule.Daily ->
+        Daily ->
             True
 
-        RRule.Weekly ->
+        Weekly ->
             List.isEmpty rrule.byDay
 
-        RRule.Monthly ->
-            List.isEmpty rrule.byMonthDay && List.isEmpty rrule.byDay
+        Monthly ->
+            List.isEmpty rrule.byMonthDay
+                && List.isEmpty rrule.byDay
 
-        RRule.Yearly ->
+        Yearly ->
             False
+
+
+
+-- BYxx RULES
+
+
+type alias Check =
+    { isExcluded : Recurrence -> Posix -> Bool
+    , isIncluded : Recurrence -> Posix -> Bool
+    }
+
+
+withinByRules : Recurrence -> Posix -> Bool
+withinByRules rrule time =
+    let
+        check { isIncluded, isExcluded } =
+            isIncluded rrule time && (not <| isExcluded rrule time)
+    in
+    case rrule.frequency of
+        Daily ->
+            True
+
+        Weekly ->
+            check Weekly.checker
+
+        Monthly ->
+            check Monthly.checker
+
+        Yearly ->
+            True

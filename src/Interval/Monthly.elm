@@ -2,41 +2,51 @@ module Interval.Monthly exposing (..)
 
 import Date
 import Either exposing (Either(..))
-import Generator
 import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
 import Time exposing (Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
 import Util exposing (Window)
 
 
-generate : Recurrence -> List Posix
-generate rrule =
-    -- TODO Shouldn't assume dtStart is a valid instance time.
-    -- Need to validate first and find the first valid instance time if necessary.
-    Generator.run rrule (withinByRules rrule)
-
-
 
 -- Window Helpers
 
 
-withinByRules : Recurrence -> Posix -> Bool
-withinByRules rrule current =
-    checkExpand rrule current && checkLimit rrule current
+checker =
+    { isExcluded = isExcluded
+    , isIncluded = isIncluded
+    }
 
 
-checkExpand : Recurrence -> Posix -> Bool
-checkExpand rrule time =
-    False
+{-| MONTHLY is limited when BYMONTH is defined
+-}
+isExcluded : Recurrence -> Posix -> Bool
+isExcluded rrule time =
+    List.member
+        (Time.toMonth rrule.tzid time |> Date.monthToNumber)
+        rrule.byMonth
 
 
-checkLimit : Recurrence -> Posix -> Bool
-checkLimit rrule time =
-    False
+{-| MONTHLY is expanded when BYDAY, and BYMONTHDAY is defined
 
+NOTE: BYDAY limits if BYMONTHDAY is present, otherwise it expands.
 
+-}
+isIncluded : Recurrence -> Posix -> Bool
+isIncluded rrule time =
+    case ( List.isEmpty rrule.byMonthDay, List.isEmpty rrule.byDay ) of
+        ( True, False ) ->
+            List.any (isByDay rrule.tzid time) rrule.byDay
 
--- BYxx PROPERTIES
+        ( False, True ) ->
+            List.any (isByMonthDay rrule.tzid time) rrule.byMonthDay
+
+        ( False, False ) ->
+            List.any (isByMonthDay rrule.tzid time) rrule.byMonthDay
+                && (not <| List.any (isByDay rrule.tzid time) rrule.byDay)
+
+        ( True, True ) ->
+            False
 
 
 {-| Each BYDAY value can also be preceded by a positive (+n) or
@@ -59,6 +69,16 @@ MUST NOT be specified with a numeric value with the FREQ rule part
 set to YEARLY when the BYWEEKNO rule part is specified.
 
 -}
+isByMonthDay : Zone -> Posix -> Int -> Bool
+isByMonthDay zone time byMonthDay =
+    if byMonthDay > 0 then
+        Time.toDay zone time == byMonthDay
+
+    else
+        -- TODO
+        True
+
+
 isByDay : Zone -> Posix -> Either ( Int, Weekday ) Weekday -> Bool
 isByDay zone time byday =
     case byday of

@@ -79,9 +79,18 @@ add int time =
 
 pastUntilCount : Maybe UntilCount -> Posix -> List Posix -> Bool
 pastUntilCount mUntilCount current times =
+    pastUntilCount_ mUntilCount current times || pastYear2500 current
+
+
+pastYear2500 time =
+    Time.posixToMillis time > 16738198839000
+
+
+pastUntilCount_ : Maybe UntilCount -> Posix -> List Posix -> Bool
+pastUntilCount_ mUntilCount current times =
     case mUntilCount of
         Just (Count count) ->
-            List.length times >= count || List.length times >= 1000
+            List.length times >= count || List.length times >= 5000
 
         Just (Until until) ->
             -- TODO is UNTIL inclusive or exclusive?
@@ -130,14 +139,13 @@ computeNextWindow rrule window =
             window.upperBound
                 |> add 1
                 |> TE.add timeUnit rrule.interval rrule.tzid
-                |> subtract 1
 
         newLowerBound =
             newUpperBound
                 |> TE.add timeUnit -1 rrule.tzid
     in
     { lowerBound = newLowerBound
-    , upperBound = newUpperBound
+    , upperBound = newUpperBound |> subtract 1
     }
 
 

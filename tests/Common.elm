@@ -1,8 +1,9 @@
 module Common exposing (..)
 
 import Expect
+import Generator
 import RRule exposing (Recurrence)
-import Test exposing (Test, test)
+import Test exposing (Test, describe)
 import Time exposing (Posix)
 
 
@@ -14,13 +15,15 @@ type alias RecurrenceTest =
     }
 
 
-type alias Generator =
-    Recurrence -> List Posix
+test : String -> List RecurrenceTest -> Test
+test tipe recurrenceTests =
+    describe tipe
+        (List.map toTest recurrenceTests)
 
 
-toTest : Generator -> RecurrenceTest -> Test
-toTest generator { description, rrule, recurrence, dates } =
-    test description <|
+toTest : RecurrenceTest -> Test
+toTest { description, rrule, recurrence, dates } =
+    Test.test description <|
         \_ ->
-            generator recurrence
+            Generator.run recurrence
                 |> Expect.equal (List.map Time.millisToPosix dates)

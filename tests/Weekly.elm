@@ -2,7 +2,6 @@ module Weekly exposing (suite)
 
 import Common
 import Either exposing (Either(..))
-import Interval.Weekly as Weekly
 import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
 import Test exposing (..)
 import Time exposing (Weekday(..))
@@ -14,9 +13,15 @@ import TimeZone
 -}
 suite : Test
 suite =
-    [ test1, test2, test3, test4_1, test4_2, test5, test6 ]
-        |> List.map (Common.toTest Weekly.generate)
-        |> describe "Weekly Tests"
+    Common.test "Weekly Tests"
+        [ test1
+        , test2
+        , test3
+        , test4_1
+        , test4_2
+        , test5
+        , test6
+        ]
 
 
 defaultRules : Recurrence

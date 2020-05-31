@@ -2,7 +2,6 @@ module Monthly exposing (..)
 
 import Common
 import Either exposing (Either(..))
-import Interval.Monthly as Monthly
 import RRule exposing (Frequency(..), Recurrence, UntilCount(..))
 import Test exposing (..)
 import Time exposing (Weekday(..))
@@ -11,9 +10,14 @@ import TimeZone
 
 suite : Test
 suite =
-    [ test1, test2 ]
-        |> List.map (Common.toTest Monthly.generate)
-        |> describe "Monthly Tests"
+    Common.test "Monthly Tests"
+        [ test1
+        , test2
+
+        --, test3
+        --, test4
+        --, test5
+        ]
 
 
 defaultRules : Recurrence
@@ -51,6 +55,7 @@ test1 =
         { defaultRules
             | untilCount = Just (Count 10)
             , byDay = [ Left ( 1, Fri ) ]
+            , dtStart = Time.millisToPosix 873464400000
         }
     , dates =
         [ 873464400000
@@ -86,6 +91,7 @@ test2 =
         { defaultRules
             | untilCount = Just (Until <| Time.millisToPosix 882921600000)
             , byDay = [ Left ( 1, Fri ) ]
+            , dtStart = Time.millisToPosix 873464400000
         }
     , dates =
         [ 873464400000
@@ -114,9 +120,22 @@ test3 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 10)
+            , interval = 2
+            , byDay = [ Left ( 1, Sun ), Left ( -1, Sun ) ]
+            , dtStart = Time.millisToPosix 873637200000
         }
     , dates =
-        []
+        [ 873637200000
+        , 875451600000
+        , 878479200000
+        , 880898400000
+        , 883922400000
+        , 885736800000
+        , 888760800000
+        , 891180000000
+        , 894200400000
+        , 896619600000
+        ]
     }
 
 

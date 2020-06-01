@@ -8,6 +8,10 @@ import Time.Extra as TE
 import Util
 
 
+type alias ByRule =
+    Recurrence -> Posix -> Bool
+
+
 {-| BYDAY
 
 Each BYDAY value can also be preceded by a positive (+n) or
@@ -30,7 +34,7 @@ MUST NOT be specified with a numeric value with the FREQ rule part
 set to YEARLY when the BYWEEKNO rule part is specified.
 
 -}
-day : Recurrence -> Posix -> Bool
+day : ByRule
 day rrule time =
     List.any (dayHelp rrule.tzid time) rrule.byDay
         |> trueIfEmpty rrule.byDay
@@ -99,7 +103,7 @@ ordinalHelp zone ordinality originalMonthDay counter current =
 
 {-| BYMONTHDAY
 -}
-monthDay : Recurrence -> Posix -> Bool
+monthDay : ByRule
 monthDay rrule time =
     List.any (monthDayHelp rrule.tzid time) rrule.byMonthDay
         |> trueIfEmpty rrule.byMonthDay
@@ -118,7 +122,7 @@ monthDayHelp zone time byMonthDay =
 
 {-| BYMONTH
 -}
-month : Recurrence -> Posix -> Bool
+month : ByRule
 month rrule time =
     List.member (Time.toMonth rrule.tzid time |> Date.monthToNumber) rrule.byMonth
         |> trueIfEmpty rrule.byMonth

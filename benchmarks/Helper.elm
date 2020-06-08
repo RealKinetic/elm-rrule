@@ -2,7 +2,7 @@ module Helper exposing (..)
 
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
-import Examples.Example exposing (Example)
+import Examples.Types exposing (Example)
 import Generator
 
 

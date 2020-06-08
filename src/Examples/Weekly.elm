@@ -2,6 +2,7 @@ module Examples.Weekly exposing (..)
 
 import Either exposing (Either(..))
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import Set
 import Time exposing (Weekday(..))
 import TimeZone
 
@@ -21,7 +22,8 @@ defaultRules =
     , byWeekNo = []
     , byMonthDay = []
     , byMonth = []
-    , exdates = Nothing
+    , byYearDay = []
+    , exdates = Set.empty
     }
 
 
@@ -291,3 +293,23 @@ example6 =
         , 877006800000
         ]
     }
+
+
+
+{- TODO Implement me
+
+   An example where the days generated makes a difference because of
+   WKST:
+
+   DTSTART;TZID=America/New_York:19970805T090000
+   RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=4;BYDAY=TU,SU;WKST=MO
+
+   ==> (1997 EDT) August 5,10,19,24
+
+   changing only WKST from MO to SU, yields different results...
+
+   DTSTART;TZID=America/New_York:19970805T090000
+   RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=4;BYDAY=TU,SU;WKST=SU
+
+   ==> (1997 EDT) August 5,17,19,31
+-}

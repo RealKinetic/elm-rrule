@@ -1,9 +1,10 @@
 module Tests exposing (..)
 
 import Examples.Daily as Daily
-import Examples.Example exposing (Example)
 import Examples.Monthly as Monthly
+import Examples.Types exposing (Example)
 import Examples.Weekly as Weekly
+import Examples.Yearly as Yearly
 import Expect
 import Generator
 import Test exposing (Test, describe)
@@ -48,6 +49,22 @@ monthly =
         , Monthly.example9
         , Monthly.example10
         , Monthly.example11
+        ]
+
+
+yearly : Test
+yearly =
+    testExamples "Yearly"
+        [ Yearly.example1
+        , Yearly.example2
+        , Yearly.example3
+        , Yearly.example4
+        , Yearly.example5_1
+        , Yearly.example5_2
+        , Yearly.example6
+        , Yearly.example7
+        , Yearly.example8
+        , Yearly.example9
         ]
 
 

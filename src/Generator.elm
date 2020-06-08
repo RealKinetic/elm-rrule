@@ -1,6 +1,6 @@
 module Generator exposing (..)
 
-import By
+import By exposing (ByRule)
 import Recurrence exposing (Frequency(..), Recurrence)
 import Time exposing (Posix)
 import Time.Extra as TE
@@ -8,7 +8,11 @@ import Util exposing (Window, notEmpty)
 
 
 run : Recurrence -> List Posix
-run rrule =
+run preNormalizedRRule =
+    let
+        rrule =
+            Recurrence.normalize preNormalizedRRule
+    in
     -- TODO Shouldn't assume dtStart is a valid instance time.
     -- Need to validate first and find the first valid instance time if necessary.
     runHelp rrule (initWindow rrule) rrule.dtStart []
@@ -121,12 +125,20 @@ windowInterval rrule =
                special expand for YEARLY.
 
 -}
+type alias Check =
+    { limits : List ByRule
+    , expands : List ByRule
+    }
+
+
 withinByRules : Recurrence -> Posix -> Bool
 withinByRules rrule time =
     let
+        apply : ByRule -> Bool
         apply f =
             f rrule time
 
+        check : Check -> Bool
         check { limits, expands } =
             (not <| List.any (apply >> not) limits)
                 && List.all apply expands
@@ -134,11 +146,7 @@ withinByRules rrule time =
     check <| withinByRulesHelp rrule
 
 
-type alias Check =
-    Recurrence -> Posix -> Bool
-
-
-withinByRulesHelp : Recurrence -> { limits : List Check, expands : List Check }
+withinByRulesHelp : Recurrence -> Check
 withinByRulesHelp rrule =
     case rrule.frequency of
         Daily ->
@@ -155,29 +163,60 @@ withinByRulesHelp rrule =
             -- See 'Note 1' above
             case ( notEmpty rrule.byMonthDay, notEmpty rrule.byDay ) of
                 ( False, True ) ->
-                    { limits = []
+                    { limits = [ By.month ]
                     , expands = [ By.day ]
                     }
 
                 ( True, False ) ->
-                    { limits = []
+                    { limits = [ By.month ]
                     , expands = [ By.monthDay ]
                     }
 
                 ( True, True ) ->
-                    { limits = [ By.day ]
+                    { limits = [ By.day, By.month ]
                     , expands = [ By.monthDay ]
                     }
 
                 ( False, False ) ->
-                    { limits = []
+                    { limits = [ By.month ]
                     , expands = []
                     }
 
         Yearly ->
-            { limits = []
-            , expands = []
-            }
+            -- See 'Note 2' above
+            case ( notEmpty rrule.byDay, notEmpty rrule.byYearDay || notEmpty rrule.byMonthDay ) of
+                ( False, _ ) ->
+                    { limits = []
+                    , expands = [ By.month, By.weekNo, By.yearDay, By.monthDay ]
+                    }
+
+                ( True, True ) ->
+                    { limits = [ By.day ]
+                    , expands = [ By.month, By.weekNo, By.yearDay, By.monthDay ]
+                    }
+
+                ( True, False ) ->
+                    case ( notEmpty rrule.byWeekNo, notEmpty rrule.byMonth ) of
+                        ( True, _ ) ->
+                            { limits = []
+                            , expands = [ By.month, By.weekNo |> and By.day ]
+                            }
+
+                        ( _, True ) ->
+                            { limits = []
+                            , expands = [ By.month |> and By.day ]
+                            }
+
+                        _ ->
+                            { limits = []
+                            , expands = [ By.day ]
+                            }
+
+
+and : ByRule -> ByRule -> ByRule
+and by1 by2 =
+    \rrule_ time_ ->
+        by1 rrule_ time_ && by2 rrule_ time_
 
 
 hasNoExpands : Recurrence -> Bool

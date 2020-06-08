@@ -1,8 +1,8 @@
-module By exposing (day, month, monthDay)
+module By exposing (ByRule, day, month, monthDay, weekNo, yearDay)
 
 import Date
 import Either exposing (Either(..))
-import Recurrence exposing (Recurrence)
+import Recurrence exposing (Frequency(..), Recurrence)
 import Time exposing (Posix, Weekday, Zone)
 import Time.Extra as TE
 import Util
@@ -36,39 +36,26 @@ set to YEARLY when the BYWEEKNO rule part is specified.
 -}
 day : ByRule
 day rrule time =
-    List.any (dayHelp rrule.tzid time) rrule.byDay
+    List.any (dayHelp rrule time) rrule.byDay
         |> trueIfEmpty rrule.byDay
 
 
-dayHelp : Zone -> Posix -> Either ( Int, Weekday ) Weekday -> Bool
-dayHelp zone time byday =
+dayHelp : Recurrence -> Posix -> Either ( Int, Weekday ) Weekday -> Bool
+dayHelp rrule time byday =
     case byday of
         Right weekday ->
-            Time.toWeekday zone time == weekday
+            Time.toWeekday rrule.tzid time == weekday
 
         Left ordinality ->
-            onOrdinalDay zone time ordinality
+            case rrule.frequency of
+                Monthly ->
+                    onOrdinalDayMonthly rrule.tzid time ordinality
 
+                Yearly ->
+                    onOrdinalDayYearly rrule.tzid time ordinality
 
-onOrdinalDay : Zone -> Posix -> ( Int, Weekday ) -> Bool
-onOrdinalDay zone time ( ordinal, weekday ) =
-    if Time.toWeekday zone time /= weekday then
-        False
-
-    else if ordinal > 5 || ordinal < -5 || ordinal == 0 then
-        -- TODO This can actually go from 1 to 53 due to YEARLY
-        False
-
-    else if ordinal > 0 then
-        TE.floor TE.Month zone time
-            |> TE.ceiling (Util.weekdayToInterval weekday) zone
-            |> ordinalHelp zone Th (Time.toDay zone time) (abs ordinal - 1)
-
-    else
-        TE.ceiling TE.Month zone time
-            |> TE.add TE.Day -1 zone
-            |> TE.floor (Util.weekdayToInterval weekday) zone
-            |> ordinalHelp zone ThToLast (Time.toDay zone time) (abs ordinal - 1)
+                _ ->
+                    False
 
 
 type Ordinality
@@ -76,8 +63,28 @@ type Ordinality
     | ThToLast
 
 
-ordinalHelp : Zone -> Ordinality -> Int -> Int -> Posix -> Bool
-ordinalHelp zone ordinality originalMonthDay counter current =
+onOrdinalDayMonthly : Zone -> Posix -> ( Int, Weekday ) -> Bool
+onOrdinalDayMonthly zone time ( ordinal, weekday ) =
+    if Time.toWeekday zone time /= weekday then
+        False
+
+    else if ordinal > 5 || ordinal < -5 || ordinal == 0 then
+        False
+
+    else if ordinal > 0 then
+        TE.floor TE.Month zone time
+            |> TE.ceiling (Util.weekdayToInterval weekday) zone
+            |> ordinalDayMonthlyHelp zone Th (Time.toDay zone time) (abs ordinal - 1)
+
+    else
+        TE.ceiling TE.Month zone time
+            |> TE.add TE.Day -1 zone
+            |> TE.floor (Util.weekdayToInterval weekday) zone
+            |> ordinalDayMonthlyHelp zone ThToLast (Time.toDay zone time) (abs ordinal - 1)
+
+
+ordinalDayMonthlyHelp : Zone -> Ordinality -> Int -> Int -> Posix -> Bool
+ordinalDayMonthlyHelp zone ordinality originalMonthDay counter current =
     let
         ( adder, comparator ) =
             case ordinality of
@@ -98,26 +105,57 @@ ordinalHelp zone ordinality originalMonthDay counter current =
         originalMonthDay == Time.toDay zone current
 
     else
-        ordinalHelp zone ordinality originalMonthDay (counter - 1) next
+        ordinalDayMonthlyHelp zone ordinality originalMonthDay (counter - 1) next
+
+
+onOrdinalDayYearly : Zone -> Posix -> ( Int, Weekday ) -> Bool
+onOrdinalDayYearly zone time ( ordinal, weekday ) =
+    let
+        jan1 =
+            TE.floor TE.Year zone time
+
+        thOrdinalDay =
+            jan1
+                |> TE.floor (Util.weekdayToInterval weekday) zone
+                |> (\t ->
+                        if jan1 == t then
+                            t
+
+                        else
+                            TE.add TE.Week 1 zone t
+                   )
+                |> Util.mergeTimeOf zone time
+                |> TE.add TE.Week (ordinal - 1) zone
+    in
+    if ordinal > 0 then
+        thOrdinalDay == time
+        --(Util.weekNumber weekStart (Date.fromPosix zone time) == (ordinal + 1))
+        --    && (Time.toWeekday zone time == weekday)
+
+    else
+        -- TODO thToLast for neg numbers
+        False
 
 
 {-| BYMONTHDAY
 -}
 monthDay : ByRule
 monthDay rrule time =
-    List.any (monthDayHelp rrule.tzid time) rrule.byMonthDay
+    let
+        thMonthDay =
+            Time.toDay rrule.tzid time
+
+        thToLastMonthDay =
+            (thMonthDay - 1)
+                - Util.daysInMonth
+                    (Time.toYear rrule.tzid time)
+                    (Time.toMonth rrule.tzid time)
+
+        match monthDayNum =
+            thMonthDay == monthDayNum || thToLastMonthDay == monthDayNum
+    in
+    List.any match rrule.byMonthDay
         |> trueIfEmpty rrule.byMonthDay
-
-
-monthDayHelp : Zone -> Posix -> Int -> Bool
-monthDayHelp zone time byMonthDay =
-    if byMonthDay > 0 then
-        Time.toDay zone time == byMonthDay
-
-    else
-        Time.toDay zone time
-            - Util.daysInMonth (Time.toYear zone time) (Time.toMonth zone time)
-            |> (==) (byMonthDay + 1)
 
 
 {-| BYMONTH
@@ -128,8 +166,59 @@ month rrule time =
         |> trueIfEmpty rrule.byMonth
 
 
-{-| TODO Change BYxx RULES to Maybes?
+{-| BYWEEKNO
 -}
+weekNo : ByRule
+weekNo rrule time =
+    List.any (weekNoHelp rrule.tzid rrule.weekStart time) rrule.byWeekNo
+        |> trueIfEmpty rrule.byWeekNo
+
+
+weekNoHelp : Zone -> Weekday -> Posix -> Int -> Bool
+weekNoHelp zone weekStart time weekNoNum =
+    let
+        date =
+            Date.fromPosix zone time
+
+        thWeekNo =
+            Util.weekNumber weekStart date
+
+        thToLastWeekNo =
+            if Util.is53WeekYear weekStart (Time.toYear zone time) then
+                (thWeekNo - 1) - 53
+
+            else
+                (thWeekNo - 1) - 52
+    in
+    thWeekNo == weekNoNum || thToLastWeekNo == weekNoNum
+
+
+{-| BYYEARDAY
+-}
+yearDay : ByRule
+yearDay rrule time =
+    let
+        year =
+            Time.toYear rrule.tzid time
+
+        thYearDay =
+            Time.toDay rrule.tzid time
+                + Util.daysBeforeMonth year (Time.toMonth rrule.tzid time)
+
+        thToLastYearDay =
+            (thYearDay - 1) - Util.daysInYear year
+
+        match yearDayNum =
+            thYearDay == yearDayNum || thToLastYearDay == yearDayNum
+    in
+    List.any match rrule.byYearDay
+        |> trueIfEmpty rrule.byYearDay
+
+
+
+-- Utils
+
+
 trueIfEmpty : List a -> Bool -> Bool
 trueIfEmpty list bool =
     if List.isEmpty list then

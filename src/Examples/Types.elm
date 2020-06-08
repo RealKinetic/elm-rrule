@@ -1,4 +1,4 @@
-module Examples.Example exposing (..)
+module Examples.Types exposing (..)
 
 import Recurrence exposing (Recurrence)
 

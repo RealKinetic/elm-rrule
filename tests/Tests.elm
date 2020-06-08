@@ -61,6 +61,7 @@ yearly =
         , Yearly.example4
         , Yearly.example5_1
         , Yearly.example5_2
+        , Yearly.example5_3
         , Yearly.example6
         , Yearly.example7
         , Yearly.example8

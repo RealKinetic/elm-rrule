@@ -238,7 +238,7 @@ example5_2 =
     { description = "Every 20th Monday of the year, w/ Sunday week start (capped at 20)"
     , rrule =
         [ "DTSTART;TZID=America/New_York:19970519T090000"
-        , "RRULE:FREQ=YEARLY;BYDAY=20MO;COUNT=20;WKST=SUN"
+        , "RRULE:FREQ=YEARLY;BYDAY=20MO;COUNT=20;WKST=SU"
         ]
     , recurrence =
         { defaultRules
@@ -272,6 +272,44 @@ example5_2 =
     }
 
 
+example5_3 =
+    { description = "Every 20th Sunday of the year, w/ Sunday week start (capped at 20)"
+    , rrule =
+        [ "DTSTART;TZID=America/New_York:19970518T090000"
+        , "RRULE:FREQ=YEARLY;BYDAY=20SU;COUNT=20;WKST=SU"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 20)
+            , dtStart = Time.millisToPosix 863960400000
+            , byDay = [ Left ( 20, Sun ) ]
+            , weekStart = Sun
+        }
+    , dates =
+        [ 863960400000
+        , 895410000000
+        , 926859600000
+        , 958309200000
+        , 990363600000
+        , 1021813200000
+        , 1053262800000
+        , 1084712400000
+        , 1116162000000
+        , 1147611600000
+        , 1179666000000
+        , 1211115600000
+        , 1242565200000
+        , 1274014800000
+        , 1305464400000
+        , 1336914000000
+        , 1368968400000
+        , 1400418000000
+        , 1431867600000
+        , 1463317200000
+        ]
+    }
+
+
 {-| Monday of week number 20 (where the default start of the week is
 Monday), forever:
 
@@ -282,6 +320,8 @@ Monday), forever:
     (1998 9:00 AM EDT) May 11
     (1999 9:00 AM EDT) May 17
     ...
+
+TODO Add with WKST=SU
 
 -}
 example6 =

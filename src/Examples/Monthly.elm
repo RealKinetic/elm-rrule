@@ -2,7 +2,6 @@ module Examples.Monthly exposing (..)
 
 import Either exposing (Either(..))
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
-import Set
 import Time exposing (Weekday(..))
 import TimeZone
 
@@ -20,7 +19,8 @@ defaultRules =
     , byMonthDay = []
     , byMonth = []
     , byYearDay = []
-    , exdates = Set.empty
+    , exdates = []
+    , rdates = []
     }
 
 
@@ -357,7 +357,6 @@ example9 =
 {-| Every Friday the 13th, forever:
 
            DTSTART;TZID=America/New_York:19970902T090000
-
            TODO why is this exdate in here?
            EXDATE;TZID=America/New_York:19970902T090000
            RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13
@@ -379,7 +378,7 @@ example10 =
     , recurrence =
         { defaultRules
             | untilCount = Just (Count 10)
-            , dtStart = Time.millisToPosix 887378400000
+            , dtStart = Time.millisToPosix 873205200000
             , byMonthDay = [ 13 ]
             , byDay = [ Right Fri ]
         }

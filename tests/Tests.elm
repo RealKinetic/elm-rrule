@@ -1,5 +1,6 @@
 module Tests exposing (..)
 
+import Decoder
 import Examples.Daily as Daily
 import Examples.Monthly as Monthly
 import Examples.Types exposing (Example)
@@ -76,7 +77,13 @@ testExamples tipe recurrenceTests =
 
 testExample : Example -> Test
 testExample { description, rrule, recurrence, dates } =
-    Test.test description <|
-        \_ ->
-            Generator.run recurrence
-                |> Expect.equal (List.map Time.millisToPosix dates)
+    describe description
+        [ Test.test "Generator.run : Recurrence -> List Posix" <|
+            \_ ->
+                Generator.run recurrence
+                    |> Expect.equal (List.map Time.millisToPosix dates)
+        , Test.test "Decoder.toRecurrence : String -> Recurrence" <|
+            \_ ->
+                Decoder.run rrule
+                    |> Expect.equal (Ok recurrence)
+        ]

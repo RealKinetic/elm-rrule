@@ -2,6 +2,7 @@ module Util exposing (..)
 
 import Date exposing (Date)
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import Set
 import Time exposing (Month(..), Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
 
@@ -68,6 +69,12 @@ gt t1 t2 =
 
 
 {-| -}
+lte : Posix -> Posix -> Bool
+lte t1 t2 =
+    Time.posixToMillis t1 <= Time.posixToMillis t2
+
+
+{-| -}
 lt : Posix -> Posix -> Bool
 lt t1 t2 =
     Time.posixToMillis t1 < Time.posixToMillis t2
@@ -90,13 +97,14 @@ add int time =
 
 
 {-| -}
-pastUntilCount : Maybe UntilCount -> Posix -> List Posix -> Bool
-pastUntilCount mUntilCount current times =
-    pastUntilCount_ mUntilCount current times || pastYear2500 current
+pastUntilCount : Posix -> Maybe UntilCount -> Posix -> List Posix -> Bool
+pastUntilCount timeCeiling mUntilCount current times =
+    pastUntilCount_ mUntilCount current times || gte current timeCeiling
 
 
-pastYear2500 time =
-    Time.posixToMillis time > 16738198839000
+year2250 : Posix
+year2250 =
+    Time.millisToPosix 8845394400000
 
 
 pastUntilCount_ : Maybe UntilCount -> Posix -> List Posix -> Bool
@@ -410,3 +418,11 @@ daysBeforeYear y1 =
 floorDiv : Int -> Int -> Int
 floorDiv a b =
     Basics.floor (toFloat a / toFloat b)
+
+
+dedupeAndSortTimes : List Posix -> List Posix
+dedupeAndSortTimes times =
+    List.foldl (\time set -> Set.insert (Time.posixToMillis time) set) Set.empty times
+        |> Set.toList
+        |> List.sort
+        |> List.map Time.millisToPosix

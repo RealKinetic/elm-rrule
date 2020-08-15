@@ -2,10 +2,7 @@ module Recurrence exposing (..)
 
 import Date exposing (Date, Month)
 import Either exposing (Either(..))
-import Parser as P exposing (..)
-import Set exposing (Set)
 import Time exposing (Posix, Weekday(..), Zone)
-import Time.Extra as TE
 
 
 type alias Recurrence =
@@ -25,7 +22,8 @@ type alias Recurrence =
     , byMonth : List Int
     , byWeekNo : List Int
     , byYearDay : List Int
-    , exdates : Set Posix
+    , exdates : List Posix
+    , rdates : List Posix
 
     -- Currently not supported
     --, bySecond : List Int
@@ -48,7 +46,8 @@ default =
     , byMonth = []
     , byWeekNo = []
     , byYearDay = []
-    , exdates = Set.empty
+    , exdates = []
+    , rdates = []
     }
 
 

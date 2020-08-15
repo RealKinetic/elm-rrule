@@ -2,42 +2,67 @@ module Decoder exposing (..)
 
 import Date exposing (Date)
 import Dict
+import Either exposing (Either(..))
 import Parser as P exposing (..)
-import Recurrence exposing (Frequency(..), Recurrence, UntilCount)
-import Time exposing (Posix, Zone)
+import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import Time exposing (Posix, Weekday(..), Zone)
 import Time.Extra as TE
 import TimeZone
 
 
 
---type alias Recurrence =
---    { -- Required
---      frequency : Frequency
---    , weekStart : Weekday
---    , interval : Int
---    , dtStart : Posix
---    , tzid : Zone
---
---    -- Optional
---    , untilCount : Maybe UntilCount
---    , byDay : List (Either ( Int, Weekday ) Weekday)
---    , byMonthDay : List Int
---    , byMonth : List Int
---    , byWeekNo : List Int
---    , exdates : Set Posix
---    }
+{-
+   TODO - All day recurring events do not have a timezone.... How do I handle this.
+-}
 
 
-thingDecoder =
-    getRRULE
-        |> andThen
-            (\rrule_ ->
-                succeed Recurrence
-                    |> andMap (maybe exdate)
-                    |> andMap getDTSTART
-                    |> andMap (succeed rrule_)
-                    |> andMap (frequency rrule_)
-            )
+run : List String -> Result Error Recurrence
+run rrules =
+    getDTSTART
+        |> andThen (\{ start, zone } -> runHelp zone start)
+        |> decodeLines rrules
+
+
+runWithDTSTART : List String -> Zone -> Posix -> Result Error Recurrence
+runWithDTSTART rrules zone start =
+    runHelp zone start
+        |> decodeLines rrules
+
+
+type alias RawRRules =
+    { dtStart : DTSTART
+    , rrule_ : RRULE
+    , exdate_ : EXDATE
+    , rdate_ : RDATE
+    }
+
+
+runHelp : Zone -> Posix -> Decoder Recurrence
+runHelp zone start =
+    succeed RawRRules
+        |> andMap (succeed <| DTSTART zone start)
+        |> andMap getRRULE
+        |> andMap getEXDATE
+        |> andMap getRDATE
+        |> andThen rawRRulesToRecurrence
+
+
+rawRRulesToRecurrence : RawRRules -> Decoder Recurrence
+rawRRulesToRecurrence { dtStart, rrule_, exdate_, rdate_ } =
+    succeed Recurrence
+        |> andMap (frequency rrule_)
+        |> andMap (weekStart rrule_)
+        |> andMap (interval rrule_)
+        |> andMap (succeed dtStart.start)
+        |> andMap (succeed dtStart.zone)
+        |> andMap (untilCount rrule_)
+        |> andMap (byDay rrule_)
+        |> andMap (byMonthDay rrule_)
+        |> andMap (byMonth rrule_)
+        |> andMap (byWeekNo rrule_)
+        |> andMap (byYearDay rrule_)
+        |> andMap (exdates exdate_)
+        |> andMap (succeed [])
 
 
 {-| "RRULE:FREQ=WEEKLY;WKST=SU;UNTIL=20200120T065959Z;BYDAY=MO,TU,WE,TH"
@@ -48,7 +73,7 @@ type RRULE
 
 getRRULE : Decoder RRULE
 getRRULE =
-    Decoder <| find RRULE "RRULE"
+    Decoder <| find True RRULE "RRULE"
 
 
 frequency : RRULE -> Decoder Frequency
@@ -63,34 +88,148 @@ frequency (RRULE rrule) =
         |> runParserOn rrule
 
 
+{-| Page 42/43 iCal Spec <https://tools.ietf.org/html/rfc5545#section-3.3.10>
+
+    The WKST rule part specifies the day on which the workweek starts.
+    Valid values are MO, TU, WE, TH, FR, SA, and SU.  This is
+    significant when a WEEKLY "RRULE" has an interval greater than 1,
+    and a BYDAY rule part is specified.  This is also significant when
+    in a YEARLY "RRULE" when a BYWEEKNO rule part is specified.  The
+    default value is MO.
+
+-}
+weekStart : RRULE -> Decoder Weekday
+weekStart (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "WKST"
+            |. symbol "="
+            |= weekday
+            |> runParserOn rrule
+        , succeed Mon
+        ]
+
+
+byDay : RRULE -> Decoder (List (Either ( Int, Weekday ) Weekday))
+byDay (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "BYDAY"
+            |. symbol "="
+            |= parseWeekdays
+            |> runParserOn rrule
+        , succeed []
+        ]
+
+
+parseWeekdays : Parser (List (Either ( Int, Weekday ) Weekday))
+parseWeekdays =
+    P.oneOf
+        [ weekday
+            |> P.map Right
+            |> P.backtrackable
+        , P.succeed Tuple.pair
+            |= parseNegatableInt
+            |= weekday
+            |> P.map Left
+        ]
+        |> list
+
+
+byMonthDay : RRULE -> Decoder (List Int)
+byMonthDay (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "BYMONTHDAY"
+            |. symbol "="
+            |= list parseNegatableInt
+            |> runParserOn rrule
+        , succeed []
+        ]
+
+
+byMonth : RRULE -> Decoder (List Int)
+byMonth (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "BYMONTH"
+            |. symbol "="
+            |= list P.int
+            |> runParserOn rrule
+        , succeed []
+        ]
+
+
+byWeekNo : RRULE -> Decoder (List Int)
+byWeekNo (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "BYWEEKNO"
+            |. symbol "="
+            |= list parseNegatableInt
+            |> runParserOn rrule
+        , succeed []
+        ]
+
+
+byYearDay : RRULE -> Decoder (List Int)
+byYearDay (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "BYYEARDAY"
+            |. symbol "="
+            |= list parseNegatableInt
+            |> runParserOn rrule
+        , succeed []
+        ]
+
+
 untilCount : RRULE -> Decoder (Maybe UntilCount)
 untilCount rrule =
     oneOf [ until rrule, count rrule ]
         |> maybe
 
 
+{-| UNTIL=19971224T000000Z
+-}
 until : RRULE -> Decoder UntilCount
 until (RRULE rrule) =
     P.succeed identity
-        |. chompThrough "FREQ"
+        |. chompThrough "UNTIL"
         |. symbol "="
-        |= (chompUntilEndOr ";"
-                |> P.getChompedString
-                |> P.andThen parseFreq
-           )
+        {- TODO this can be DATE as well as DATETIME pg 41 of the spec
+           The UNTIL rule part defines a DATE or DATE-TIME value that bounds
+           the recurrence rule in an inclusive manner.
+        -}
+        |= parseDateTime
+        |> P.map (TE.partsToPosix Time.utc >> Until)
         |> runParserOn rrule
 
 
+{-| COUNT=42
+-}
 count : RRULE -> Decoder UntilCount
 count (RRULE rrule) =
     P.succeed identity
-        |. chompThrough "FREQ"
+        |. chompThrough "COUNT"
         |. symbol "="
-        |= (chompUntilEndOr ";"
-                |> P.getChompedString
-                |> P.andThen parseFreq
-           )
+        |= P.int
+        |> P.map Count
         |> runParserOn rrule
+
+
+{-| INTERVAL=2
+-}
+interval : RRULE -> Decoder Int
+interval (RRULE rrule) =
+    oneOf
+        [ P.succeed identity
+            |. chompThrough "INTERVAL"
+            |. symbol "="
+            |= P.int
+            |> runParserOn rrule
+        , succeed 1
+        ]
 
 
 parseFreq : String -> Parser Frequency
@@ -110,6 +249,38 @@ parseFreq str =
 
         _ ->
             problem ("Unknown FREQ: " ++ str)
+
+
+weekday : Parser Weekday
+weekday =
+    chompChars 2
+        |> P.andThen
+            (\str ->
+                case str of
+                    "MO" ->
+                        P.succeed Mon
+
+                    "TU" ->
+                        P.succeed Tue
+
+                    "WE" ->
+                        P.succeed Wed
+
+                    "TH" ->
+                        P.succeed Thu
+
+                    "FR" ->
+                        P.succeed Fri
+
+                    "SA" ->
+                        P.succeed Sat
+
+                    "SU" ->
+                        P.succeed Sun
+
+                    _ ->
+                        problem ("Unknown FREQ: " ++ str)
+            )
 
 
 {-| "20190806T055959"
@@ -137,27 +308,45 @@ parseDate =
         |= chompDigits 2
 
 
-testdt =
-    P.run (parseDateTime |. symbol "Z" |. end) "20190806T055959Z"
+parseNegatableInt : Parser Int
+parseNegatableInt =
+    P.oneOf
+        [ P.succeed negate
+            |. P.symbol "-"
+            |= P.int
+        , P.int
+        ]
 
 
 {-| DTSTART;TZID=America/Denver:20190603T090000;
 -}
-type DTSTART
-    = DTSTART String
+type alias DTSTART =
+    { zone : Zone
+    , start : Posix
+    }
 
 
 getDTSTART : Decoder DTSTART
 getDTSTART =
-    Decoder <| find DTSTART "DTSTART"
+    find True identity "DTSTART"
+        |> Decoder
+        |> andThen tzidAndDtStart
 
 
+{-| RDATE;
+-}
+type RDATE
+    = RDATE String
 
--- TODO Default to UTC if TZID doesn't exist?
+
+getRDATE : Decoder RDATE
+getRDATE =
+    Decoder <| find False RDATE "RDATE"
 
 
-tzidAndDtStart : DTSTART -> Decoder ( Zone, Posix )
-tzidAndDtStart (DTSTART dtstart_) =
+tzidAndDtStart : String -> Decoder DTSTART
+tzidAndDtStart dtstartString =
+    -- TODO Default to UTC if TZID doesn't exist?
     P.succeed Tuple.pair
         |. chompThrough "TZID"
         |. symbol "="
@@ -166,17 +355,26 @@ tzidAndDtStart (DTSTART dtstart_) =
                 |> P.andThen parseTzid
            )
         |. symbol ":"
+        -- TODO this can be DATE as well as DATETIME pg 41 of the spec
         |= parseDateTime
         |> P.map
             (\( zone, parts ) ->
-                ( zone, TE.partsToPosix zone parts )
+                { zone = zone
+                , start = TE.partsToPosix zone parts
+                }
             )
-        |> runParserOn dtstart_
+        |> runParserOn dtstartString
+
+
+ianaTimezones : Dict.Dict String (() -> Zone)
+ianaTimezones =
+    TimeZone.zones
+        |> Dict.insert "UTC" (\() -> Time.utc)
 
 
 parseTzid : String -> Parser Zone
 parseTzid ianaZoneName =
-    case Dict.get ianaZoneName TimeZone.zones of
+    case Dict.get ianaZoneName ianaTimezones of
         Just zone ->
             P.succeed <| zone ()
 
@@ -190,9 +388,52 @@ type EXDATE
     = EXDATE String
 
 
-exdate : Decoder EXDATE
-exdate =
-    Decoder <| find EXDATE "EXDATE"
+getEXDATE : Decoder EXDATE
+getEXDATE =
+    Decoder <| find False EXDATE "EXDATE"
+
+
+exdates : EXDATE -> Decoder (List Posix)
+exdates (EXDATE exdateString) =
+    -- TODO Default to UTC if TZID doesn't exist?
+    P.oneOf
+        [ P.succeed Tuple.pair
+            |. chompThrough "TZID"
+            |. symbol "="
+            |= (chompUntil ":"
+                    |> P.getChompedString
+                    |> P.andThen parseTzid
+               )
+            |. symbol ":"
+            |= list parseDateTime
+            |> P.map
+                (\( zone, exdates_ ) ->
+                    List.map (TE.partsToPosix zone) exdates_
+                )
+        , P.succeed []
+        ]
+        |> runParserOn exdateString
+
+
+
+{- List Helper -}
+
+
+list : Parser a -> Parser (List a)
+list chompingParser =
+    P.loop [] (listHelper chompingParser)
+        |> P.map List.reverse
+
+
+listHelper : Parser a -> List a -> Parser (Step (List a) (List a))
+listHelper chompingParser items =
+    P.succeed (\item step -> step (item :: items))
+        |= chompingParser
+        |= P.oneOf
+            [ P.succeed Loop |. symbol ","
+            , P.succeed Done |. symbol ";"
+            , P.succeed Done |. P.end
+            ]
 
 
 
@@ -204,18 +445,22 @@ exdate =
 EXRULES...? Ha. No.
 
 -}
-find : (String -> a) -> String -> List String -> Result Error a
-find tagger name vals =
+find : Bool -> (String -> a) -> String -> List String -> Result Error a
+find required tagger name vals =
     case vals of
         [] ->
-            Err <| NotFound name
+            if required then
+                Err <| NotFound name
+
+            else
+                Ok <| tagger ""
 
         x :: xs ->
             if String.startsWith name x then
                 Ok <| tagger x
 
             else
-                find tagger name xs
+                find required tagger name xs
 
 
 {-| Decoder
@@ -240,8 +485,8 @@ type Error
     e.g. "RRULE:UNTIL=.....;\nEXDATE:TZID=...."
 
 -}
-run : Decoder a -> List String -> Result Error a
-run (Decoder decoderF) lines =
+decodeLines : List String -> Decoder a -> Result Error a
+decodeLines lines (Decoder decoderF) =
     decoderF lines
 
 
@@ -269,7 +514,7 @@ andThen toB (Decoder decoderF) =
         \val ->
             case decoderF val of
                 Ok decoded ->
-                    run (toB decoded) val
+                    decodeLines val (toB decoded)
 
                 Err err ->
                     Err err
@@ -365,13 +610,13 @@ chompChars length =
 
 
 helper : Int -> Int -> Parser (Step Int Int)
-helper length count =
-    if length == count then
+helper length count_ =
+    if length == count_ then
         P.succeed ()
-            |> P.map (\_ -> Done count)
+            |> P.map (\_ -> Done count_)
 
     else
-        P.succeed (Loop (count + 1))
+        P.succeed (Loop (count_ + 1))
             |. chompIf (\_ -> True)
 
 

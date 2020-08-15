@@ -1,10 +1,45 @@
 module Generator exposing (..)
 
 import By exposing (ByRule)
-import Recurrence exposing (Frequency(..), Recurrence)
-import Time exposing (Posix)
+import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import Set
+import Time exposing (Posix, Zone)
 import Time.Extra as TE
 import Util exposing (Window, notEmpty)
+
+
+between : { start : Posix, end : Posix } -> Recurrence -> List Posix
+between { start, end } preNormalizedRRule =
+    let
+        rrule =
+            Recurrence.normalize preNormalizedRRule
+
+        startTime =
+            if Util.gt start rrule.dtStart then
+                -- TODO how can we do this in a non-problematic way, so it doesn't
+                --      alter then bounds the user has defined?
+                Util.mergeTimeOf rrule.tzid rrule.dtStart start
+
+            else
+                rrule.dtStart
+
+        ceiling =
+            if Util.lt end Util.year2250 then
+                end
+
+            else
+                Util.year2250
+    in
+    if start |> Util.lte rrule.dtStart then
+        run rrule
+
+    else
+        runHelp
+            ceiling
+            (Recurrence.normalize rrule)
+            (initWindow rrule)
+            startTime
+            []
 
 
 run : Recurrence -> List Posix
@@ -15,11 +50,11 @@ run preNormalizedRRule =
     in
     -- TODO Shouldn't assume dtStart is a valid instance time.
     -- Need to validate first and find the first valid instance time if necessary.
-    runHelp rrule (initWindow rrule) rrule.dtStart []
+    runHelp Util.year2250 rrule (initWindow rrule) rrule.dtStart []
 
 
-runHelp : Recurrence -> Window -> Posix -> List Posix -> List Posix
-runHelp rrule window current acc =
+runHelp : Posix -> Recurrence -> Window -> Posix -> List Posix -> List Posix
+runHelp timeCeiling rrule window current acc =
     let
         nextByDay =
             -- This is not as performant as it could be.
@@ -49,14 +84,15 @@ runHelp rrule window current acc =
             else
                 Util.computeNextWindow rrule window
     in
-    if Util.pastUntilCount rrule.untilCount current acc then
-        List.reverse acc
+    if Util.pastUntilCount timeCeiling rrule.untilCount current acc then
+        -- TODO Do RDATES take precedence over EXDATES
+        Util.dedupeAndSortTimes (acc ++ rrule.rdates)
 
-    else if current |> withinByRules rrule then
-        runHelp rrule nextWindow nextTime (current :: acc)
+    else if current |> withinRuleset rrule then
+        runHelp timeCeiling rrule nextWindow nextTime (current :: acc)
 
     else
-        runHelp rrule nextWindow nextTime acc
+        runHelp timeCeiling rrule nextWindow nextTime acc
 
 
 
@@ -86,6 +122,12 @@ windowInterval rrule =
 
         Yearly ->
             TE.Year
+
+
+withinRuleset : Recurrence -> Posix -> Bool
+withinRuleset rrule time =
+    withinByRules rrule time
+        && not (List.any ((==) time) rrule.exdates)
 
 
 

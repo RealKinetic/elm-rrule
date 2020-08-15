@@ -2,7 +2,6 @@ module Examples.Weekly exposing (..)
 
 import Either exposing (Either(..))
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
-import Set
 import Time exposing (Weekday(..))
 import TimeZone
 
@@ -23,7 +22,8 @@ defaultRules =
     , byMonthDay = []
     , byMonth = []
     , byYearDay = []
-    , exdates = Set.empty
+    , exdates = []
+    , rdates = []
     }
 
 

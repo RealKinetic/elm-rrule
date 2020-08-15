@@ -477,7 +477,20 @@ type Error
     = NotFound String
     | ParseFailure String
     | OneOf (List Error)
-    | Failure String String
+
+
+errorToString : Error -> String
+errorToString error =
+    case error of
+        NotFound info ->
+            "Not Found: " ++ info
+
+        ParseFailure info ->
+            "RRULE Parse Failure: " ++ info
+
+        OneOf errors ->
+            List.map errorToString errors
+                |> String.join "\n"
 
 
 {-| Properties need to be separated by newline

@@ -490,7 +490,7 @@ errorToString error =
 
         OneOf errors ->
             List.map errorToString errors
-                |> String.join "\n"
+                |> String.join "\n\n"
 
 
 {-| Properties need to be separated by newline

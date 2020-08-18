@@ -2,7 +2,6 @@ module Generator exposing (..)
 
 import By exposing (ByRule)
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
-import Set
 import Time exposing (Posix, Zone)
 import Time.Extra as TE
 import Util exposing (Window, notEmpty)
@@ -30,16 +29,12 @@ between { start, end } preNormalizedRRule =
             else
                 Util.year2250
     in
-    if start |> Util.lte rrule.dtStart then
-        run rrule
-
-    else
-        runHelp
-            ceiling
-            (Recurrence.normalize rrule)
-            (initWindow rrule)
-            startTime
-            []
+    runHelp
+        ceiling
+        rrule
+        (initWindow { rrule | dtStart = startTime })
+        startTime
+        []
 
 
 run : Recurrence -> List Posix

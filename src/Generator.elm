@@ -14,13 +14,18 @@ between { start, end } preNormalizedRRule =
             Recurrence.normalize preNormalizedRRule
 
         startTime =
-            if Util.gt start rrule.dtStart then
-                -- TODO how can we do this in a non-problematic way, so it doesn't
-                --      alter then bounds the user has defined?
-                Util.mergeTimeOf rrule.tzid rrule.dtStart start
-
-            else
-                rrule.dtStart
+            {- TODO The below implementation (w/ the merge of dtstart and start)
+                broke events with a Count.
+                A temporary fix was added to filter all times after the start date.
+                This is all quite inefficient, and the code could be massively optimized.
+               -
+            -}
+            --
+            --if Util.gt start rrule.dtStart then
+            --    Util.mergeTimeOf rrule.tzid rrule.dtStart start
+            --
+            --else
+            rrule.dtStart
 
         ceiling =
             if Util.lt end Util.year2250 then
@@ -32,9 +37,10 @@ between { start, end } preNormalizedRRule =
     runHelp
         ceiling
         rrule
-        (initWindow { rrule | dtStart = startTime })
+        (initWindow startTime rrule)
         startTime
         []
+        |> List.filter (\time -> Util.gte time start)
 
 
 run : Recurrence -> List Posix
@@ -45,7 +51,7 @@ run preNormalizedRRule =
     in
     -- TODO Shouldn't assume dtStart is a valid instance time.
     -- Need to validate first and find the first valid instance time if necessary.
-    runHelp Util.year2250 rrule (initWindow rrule) rrule.dtStart []
+    runHelp Util.year2250 rrule (initWindow rrule.dtStart rrule) rrule.dtStart []
 
 
 runHelp : Posix -> Recurrence -> Window -> Posix -> List Posix -> List Posix
@@ -80,7 +86,7 @@ runHelp timeCeiling rrule window current acc =
                 Util.computeNextWindow rrule window
     in
     if Util.pastUntilCount timeCeiling rrule.untilCount current acc then
-        -- TODO Do RDATES take precedence over EXDATES
+        -- TODO Do RDATES take precedence over EXDATES?
         Util.dedupeAndSortTimes (acc ++ rrule.rdates)
 
     else if current |> withinRuleset rrule then
@@ -94,8 +100,8 @@ runHelp timeCeiling rrule window current acc =
 -- WINDOW
 
 
-initWindow : Recurrence -> Window
-initWindow rrule =
+initWindow : Posix -> Recurrence -> Window
+initWindow lowerBound rrule =
     { lowerBound = rrule.dtStart
     , upperBound =
         TE.ceiling (windowInterval rrule) rrule.tzid rrule.dtStart

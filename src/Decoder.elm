@@ -44,18 +44,18 @@ runHelp zone start =
         |> andMap getRRULE
         |> andMap getEXDATE
         |> andMap getRDATE
-        |> andThen rawRRulesToRecurrence
+        |> andThen (rawRRulesToRecurrence zone)
 
 
-rawRRulesToRecurrence : RawRRules -> Decoder Recurrence
-rawRRulesToRecurrence { dtStart, rrule_, exdate_, rdate_ } =
+rawRRulesToRecurrence : Zone -> RawRRules -> Decoder Recurrence
+rawRRulesToRecurrence zone { dtStart, rrule_, exdate_, rdate_ } =
     succeed Recurrence
         |> andMap (frequency rrule_)
         |> andMap (weekStart rrule_)
         |> andMap (interval rrule_)
         |> andMap (succeed dtStart.start)
         |> andMap (succeed dtStart.zone)
-        |> andMap (untilCount rrule_)
+        |> andMap (untilCount zone rrule_)
         |> andMap (byDay rrule_)
         |> andMap (byMonthDay rrule_)
         |> andMap (byMonth rrule_)
@@ -184,25 +184,32 @@ byYearDay (RRULE rrule) =
         ]
 
 
-untilCount : RRULE -> Decoder (Maybe UntilCount)
-untilCount rrule =
-    oneOf [ until rrule, count rrule ]
+untilCount : Zone -> RRULE -> Decoder (Maybe UntilCount)
+untilCount zone rrule =
+    oneOf [ until zone rrule, count rrule ]
         |> maybe
 
 
 {-| UNTIL=19971224T000000Z
 -}
-until : RRULE -> Decoder UntilCount
-until (RRULE rrule) =
+until : Zone -> RRULE -> Decoder UntilCount
+until zone (RRULE rrule) =
     P.succeed identity
         |. chompThrough "UNTIL"
         |. symbol "="
         {- TODO this can be DATE as well as DATETIME pg 41 of the spec
            The UNTIL rule part defines a DATE or DATE-TIME value that bounds
            the recurrence rule in an inclusive manner.
+
+           TODO Should UNTIL DATE's be cast into posix w/ UTC or TZID
         -}
-        |= parseDateTime
-        |> P.map (TE.partsToPosix Time.utc >> Until)
+        |= P.oneOf
+            [ parseDateTime
+                |> P.map (TE.partsToPosix Time.utc >> Until)
+                |> P.backtrackable
+            , parseDateToParts
+                |> P.map (TE.partsToPosix zone >> Until)
+            ]
         |> runParserOn rrule
 
 
@@ -300,6 +307,20 @@ parseDateTime =
 
 {-| "20190806"
 -}
+parseDateToParts : Parser TE.Parts
+parseDateToParts =
+    P.succeed TE.Parts
+        |= chompDigits 4
+        |= (chompDigits 2 |> P.map Date.numberToMonth)
+        |= chompDigits 2
+        |= P.succeed 0
+        |= P.succeed 0
+        |= P.succeed 0
+        |= P.succeed 0
+
+
+{-| "20190806"
+-}
 parseDate : Parser Date
 parseDate =
     P.succeed Date.fromCalendarDate
@@ -356,7 +377,10 @@ tzidAndDtStart dtstartString =
            )
         |. symbol ":"
         -- TODO this can be DATE as well as DATETIME pg 41 of the spec
-        |= parseDateTime
+        |= P.oneOf
+            [ parseDateTime |> P.backtrackable
+            , parseDateToParts
+            ]
         |> P.map
             (\( zone, parts ) ->
                 { zone = zone

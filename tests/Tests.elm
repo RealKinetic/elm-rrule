@@ -1,6 +1,7 @@
 module Tests exposing (..)
 
 import Decoder
+import Examples.Custom as Custom
 import Examples.Daily as Daily
 import Examples.Monthly as Monthly
 import Examples.Types exposing (Example)
@@ -67,6 +68,14 @@ yearly =
         , Yearly.example7
         , Yearly.example8
         , Yearly.example9
+        ]
+
+
+custom : Test
+custom =
+    testExamples "Custom"
+        [ Custom.example1
+        , Custom.example2
         ]
 
 

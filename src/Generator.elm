@@ -13,6 +13,9 @@ between { start, end } preNormalizedRRule =
         rrule =
             Recurrence.normalize preNormalizedRRule
 
+        hasNoExpands_ =
+            hasNoExpands preNormalizedRRule
+
         startTime =
             {- TODO The below implementation (w/ the merge of dtstart and start)
                 broke events with a Count.
@@ -34,7 +37,7 @@ between { start, end } preNormalizedRRule =
             else
                 Util.year2250
     in
-    runHelp
+    runHelp hasNoExpands_
         ceiling
         rrule
         (initWindow startTime rrule)
@@ -48,14 +51,17 @@ run preNormalizedRRule =
     let
         rrule =
             Recurrence.normalize preNormalizedRRule
+
+        hasNoExpands_ =
+            hasNoExpands preNormalizedRRule
     in
     -- TODO Shouldn't assume dtStart is a valid instance time.
     -- Need to validate first and find the first valid instance time if necessary.
-    runHelp Util.year2250 rrule (initWindow rrule.dtStart rrule) rrule.dtStart []
+    runHelp hasNoExpands_ Util.year2250 rrule (initWindow rrule.dtStart rrule) rrule.dtStart []
 
 
-runHelp : Posix -> Recurrence -> Window -> Posix -> List Posix -> List Posix
-runHelp timeCeiling rrule window current acc =
+runHelp : Bool -> Posix -> Recurrence -> Window -> Posix -> List Posix -> List Posix
+runHelp rruleHasNoExpands timeCeiling rrule window current acc =
     let
         nextByDay =
             -- This is not as performant as it could be.
@@ -64,7 +70,7 @@ runHelp timeCeiling rrule window current acc =
             TE.add TE.Day 1 rrule.tzid current
 
         nextTime =
-            if rrule |> hasNoExpands then
+            if rruleHasNoExpands then
                 TE.add (Util.freqToInterval rrule.frequency)
                     rrule.interval
                     rrule.tzid
@@ -72,7 +78,7 @@ runHelp timeCeiling rrule window current acc =
 
             else if Util.inWindow nextByDay window then
                 -- TODO check to see if this behaving correctly by adding tests
-                -- for rrule's with RULE:FREQ=WEEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
+                -- for rrule's with RULE:FREQ=WEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
                 nextByDay
 
             else
@@ -90,10 +96,10 @@ runHelp timeCeiling rrule window current acc =
         Util.dedupeAndSortTimes (acc ++ rrule.rdates)
 
     else if current |> withinRuleset rrule then
-        runHelp timeCeiling rrule nextWindow nextTime (current :: acc)
+        runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
 
     else
-        runHelp timeCeiling rrule nextWindow nextTime acc
+        runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime acc
 
 
 
@@ -276,4 +282,14 @@ hasNoExpands rrule =
                 && List.isEmpty rrule.byDay
 
         Yearly ->
-            False
+            -- See 'Note 2' above (byDay is a limit if BYYEARDAY or BYMONTHDAY is present)
+            if List.isEmpty rrule.byYearDay && List.isEmpty rrule.byMonthDay then
+                List.isEmpty rrule.byMonth
+                    && List.isEmpty rrule.byWeekNo
+                    && List.isEmpty rrule.byDay
+
+            else
+                List.isEmpty rrule.byMonth
+                    && List.isEmpty rrule.byWeekNo
+                    && List.isEmpty rrule.byYearDay
+                    && List.isEmpty rrule.byMonthDay

@@ -76,6 +76,8 @@ custom =
     testExamples "Custom"
         [ Custom.example1
         , Custom.example2
+        , Custom.example3
+        , Custom.example4
         ]
 
 

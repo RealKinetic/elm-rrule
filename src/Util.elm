@@ -420,6 +420,9 @@ floorDiv a b =
     Basics.floor (toFloat a / toFloat b)
 
 
+{-| TODO - Use dedupe optimization w/ sort
+<https://discourse.elm-lang.org/t/remove-duplications-from-the-list-reviewed/6529>
+-}
 dedupeAndSortTimes : List Posix -> List Posix
 dedupeAndSortTimes times =
     List.foldl (\time set -> Set.insert (Time.posixToMillis time) set) Set.empty times

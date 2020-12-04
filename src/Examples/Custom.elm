@@ -106,3 +106,27 @@ example4 =
         }
     , dates = [ 1607445000000, 1612888200000, 1618327800000, 1623166200000 ]
     }
+
+
+{-| EXDATES should be removed after initial instances are generated.
+This way additional instances aren't generated past the COUNT.
+-}
+example5 =
+    { description = "EXDATES not counted for/against COUNT"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20190718T143000"
+        , "EXDATE;TZID=America/Denver:20190815T143000,20191107T143000"
+        , "RRULE:FREQ=WEEKLY;WKST=SU;COUNT=18;INTERVAL=2;BYDAY=TH"
+        ]
+    , recurrence =
+        { defaultRules
+            | frequency = Weekly
+            , weekStart = Sun
+            , untilCount = Just (Count 18)
+            , interval = 2
+            , byDay = [ Right Thu ]
+            , dtStart = Time.millisToPosix 1563481800000
+            , exdates = [ Time.millisToPosix 1565901000000, Time.millisToPosix 1573162200000 ]
+        }
+    , dates = [ 1563481800000, 1564691400000, 1567110600000, 1568320200000, 1569529800000, 1570739400000, 1571949000000, 1574371800000, 1575581400000, 1576791000000, 1578000600000, 1579210200000, 1580419800000, 1581629400000, 1582839000000, 1584045000000 ]
+    }

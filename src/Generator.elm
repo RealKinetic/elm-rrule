@@ -2,6 +2,7 @@ module Generator exposing (..)
 
 import By exposing (ByRule)
 import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import Set
 import Time exposing (Posix, Zone)
 import Time.Extra as TE
 import Util exposing (Window, notEmpty)
@@ -90,10 +91,23 @@ runHelp rruleHasNoExpands timeCeiling rrule window current acc =
 
             else
                 Util.computeNextWindow rrule window
+
+        withoutExDates =
+            List.filter
+                (\time ->
+                    List.map Time.posixToMillis rrule.exdates
+                        |> Set.fromList
+                        |> Set.member (Time.posixToMillis time)
+                        |> not
+                )
     in
     if Util.pastUntilCount timeCeiling rrule.untilCount current acc then
-        -- TODO Do RDATES take precedence over EXDATES?
+        {-
+           TODO EXDATES should not affect the generation of instances vis-a-vis COUNT,
+            But can the same be said for RDATE? I suspect RDATE behaves similiarly to EXDATE.
+        -}
         Util.dedupeAndSortTimes (acc ++ rrule.rdates)
+            |> withoutExDates
 
     else if current |> withinRuleset rrule then
         runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
@@ -134,7 +148,6 @@ windowInterval rrule =
 withinRuleset : Recurrence -> Posix -> Bool
 withinRuleset rrule time =
     withinByRules rrule time
-        && not (List.any ((==) time) rrule.exdates)
 
 
 

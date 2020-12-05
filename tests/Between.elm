@@ -1,9 +1,7 @@
 module Between exposing (..)
 
-import Decoder
 import Expect
-import Generator
-import Recurrence exposing (Recurrence)
+import RRule exposing (RRule)
 import Test exposing (Test, describe)
 import Time exposing (Posix)
 import TimeZone
@@ -11,7 +9,7 @@ import TimeZone
 
 type alias BetweenTest =
     { description : String
-    , recurrence : Result Decoder.Error Recurrence
+    , recurrence : Result RRule.Error RRule
     , start : Posix
     , end : Posix
     }
@@ -21,7 +19,7 @@ weekly1 : BetweenTest
 weekly1 =
     { description = "One count weekly recurring outside of date range"
     , recurrence =
-        Decoder.runWithDTSTART
+        RRule.fromStringsWithStart
             [ "RRULE:FREQ=WEEKLY;WKST=SU;COUNT=1;BYDAY=TH,TU,WE" ]
             (TimeZone.america__denver ())
             (Time.millisToPosix 1596560400000 {- 2020-08-04T17:00:00.000Z -})
@@ -35,7 +33,7 @@ toTest { description, recurrence, start, end } =
     Test.test description <|
         \_ ->
             recurrence
-                |> Result.map (Generator.between { start = start, end = end })
+                |> Result.map (RRule.between { start = start, end = end })
                 |> Expect.equal (Ok [])
 
 

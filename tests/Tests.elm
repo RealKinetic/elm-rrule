@@ -78,6 +78,7 @@ custom =
         , Custom.example3
         , Custom.example4
         , Custom.example5
+        , Custom.example6
         ]
 
 

@@ -130,3 +130,22 @@ example5 =
         }
     , dates = [ 1563481800000, 1564691400000, 1567110600000, 1568320200000, 1569529800000, 1570739400000, 1571949000000, 1574371800000, 1575581400000, 1576791000000, 1578000600000, 1579210200000, 1580419800000, 1581629400000, 1582839000000, 1584045000000 ]
     }
+
+
+{-| Test trimming rrule strings
+-}
+example6 =
+    { description = "RRULE strings with spaces & newlines"
+    , rrule =
+        [ "  DTSTART;TZID=America/Denver:20200603 \n "
+        , "  \n RRULE:FREQ=WEEKLY;UNTIL=20200825;BYDAY=WE  \n  "
+        ]
+    , recurrence =
+        { defaultRules
+            | frequency = Weekly
+            , untilCount = Just (Until <| Time.millisToPosix 1598335200000)
+            , dtStart = Time.millisToPosix 1591164000000
+            , byDay = [ Right Wed ]
+        }
+    , dates = [ 1591164000000, 1591768800000, 1592373600000, 1592978400000, 1593583200000, 1594188000000, 1594792800000, 1595397600000, 1596002400000, 1596607200000, 1597212000000, 1597816800000 ]
+    }

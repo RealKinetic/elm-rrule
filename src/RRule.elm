@@ -1277,7 +1277,7 @@ errorToString error =
 
 decodeLines : List String -> Decoder a -> Result Error a
 decodeLines lines (Decoder decoderF) =
-    decoderF lines
+    decoderF (List.map String.trim lines)
 
 
 succeed : a -> Decoder a

@@ -19,7 +19,7 @@ type alias RRule =
     , interval : Int
     , dtStart : Posix
 
-    -- TODO Support floating times by having the user provide a fallback IANA?
+    -- TODO Support floating times by having the user provide a fallback IANA / Zone?
     , tzid : Zone
 
     -- Optional
@@ -40,24 +40,6 @@ type alias RRule =
     }
 
 
-default : RRule
-default =
-    { frequency = Weekly
-    , weekStart = Mon
-    , interval = 1
-    , dtStart = Time.millisToPosix 0
-    , tzid = Time.utc
-    , untilCount = Nothing
-    , byDay = []
-    , byMonthDay = []
-    , byMonth = []
-    , byWeekNo = []
-    , byYearDay = []
-    , exdates = []
-    , rdates = []
-    }
-
-
 type Frequency
     = Daily
     | Weekly
@@ -67,58 +49,8 @@ type Frequency
 
 type UntilCount
     = Count Int
-      -- TODO Support Date and DateTime
+      -- TODO Support Date and DateTime?
     | Until Posix
-
-
-{-| Information, not contained in the rule, necessary to determine the
-various recurrence instance start time and dates are derived from
-the Start Time ("DTSTART") component attribute.
-
-If the BYDAY, BYMONTHDAY, or BYMONTH rule part are missing,
-the appropriate day or month are retrieved from the "DTSTART" property.
-
-For example, "FREQ=YEARLY;BYMONTH=1" doesn't specify a specific day
-within the month or a time. This information would be the same
-as what is specified for "DTSTART".
-
--}
-normalizeRRule : RRule -> RRule
-normalizeRRule rrule =
-    case rrule.frequency of
-        Weekly ->
-            case rrule.byDay of
-                [] ->
-                    { rrule
-                        | byDay = [ Right <| Time.toWeekday rrule.tzid rrule.dtStart ]
-                    }
-
-                _ ->
-                    rrule
-
-        Monthly ->
-            case ( rrule.byDay, rrule.byMonthDay ) of
-                ( [], [] ) ->
-                    { rrule
-                      -- TODO Should this be byMonthDay or byDay?
-                        | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
-                    }
-
-                _ ->
-                    rrule
-
-        Yearly ->
-            case ( rrule.byDay, rrule.byMonthDay, rrule.byYearDay ) of
-                ( [], [], [] ) ->
-                    { rrule
-                        | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
-                    }
-
-                _ ->
-                    rrule
-
-        Daily ->
-            rrule
 
 
 
@@ -132,6 +64,11 @@ between { start, end } preNormalizedRRule =
             normalizeRRule preNormalizedRRule
 
         hasNoExpands_ =
+            {-
+               TODO we'll potentially add expands in the normalized version.
+                Will checking against the prenormalized rrule always result
+                in correct behavior.
+            -}
             hasNoExpands preNormalizedRRule
 
         startTime =
@@ -198,7 +135,7 @@ runHelp rruleHasNoExpands timeCeiling rrule window current acc =
 
             else if inWindow nextByDay window then
                 -- If there are expanding BYRULES we need to check each day within
-                -- the window.
+                -- the window. TODO Finish comment
                 --
                 -- TODO check to see if this behaving correctly by adding tests
                 -- for rrule's with RULE:FREQ=WEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
@@ -238,10 +175,66 @@ runHelp rruleHasNoExpands timeCeiling rrule window current acc =
         runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime acc
 
 
+{-| Information not contained in the rule necessary to determine the
+various recurrence instance start time and dates are derived from
+the DTSTART.
+
+If the BYDAY, BYMONTHDAY, or BYMONTH rule part are missing,
+the appropriate day or month are retrieved from the DTSTART property.
+
+For example, "FREQ=YEARLY;BYMONTH=1" doesn't specify a specific day
+within the month or a time. This information would be the same
+as what is specified for DTSTART.
+
+-}
+normalizeRRule : RRule -> RRule
+normalizeRRule rrule =
+    case rrule.frequency of
+        Weekly ->
+            case rrule.byDay of
+                [] ->
+                    { rrule
+                        | byDay = [ Right <| Time.toWeekday rrule.tzid rrule.dtStart ]
+                    }
+
+                _ ->
+                    rrule
+
+        Monthly ->
+            case ( rrule.byDay, rrule.byMonthDay ) of
+                ( [], [] ) ->
+                    { rrule
+                      -- TODO Should this be byMonthDay or byDay?
+                        | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
+                    }
+
+                _ ->
+                    rrule
+
+        Yearly ->
+            {-
+               TODO This one is slightly odd. I think it needs some correcting.
+                running `hasNoExpands rrule` should work, but I think this is
+                preventing it from being so. We are running that on the prenormalized
+                rrule atm.
+            -}
+            case ( rrule.byDay, rrule.byMonthDay, rrule.byYearDay ) of
+                ( [], [], [] ) ->
+                    { rrule
+                        | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
+                    }
+
+                _ ->
+                    rrule
+
+        Daily ->
+            rrule
+
+
 
 {- Window
 
-   Helps
+   TODO Helps ???
 -}
 
 
@@ -276,7 +269,7 @@ withinRuleset rrule time =
 
 
 
--- BYxx RULES
+-- BYRRULE Helpers
 
 
 {-|
@@ -775,7 +768,7 @@ bumpToNextWindow rrule time =
 -- DECODERS
 -----------------------------------------------------------------------
 {-
-   TODO - All day recurring events do not have a timezone.... How do I handle this.
+   TODO - All day recurring events do not have a timezone... How do I handle this.
 -}
 
 
@@ -1171,7 +1164,7 @@ parseTzid ianaZoneName =
             P.problem <| "Unknown IANA zone: " ++ ianaZoneName
 
 
-{-| "EXDATE;TZID=America/Denver:20170419T083000,2017052…0,20190717T090000,20190718T090000,20190730T090000"
+{-| "EXDATE;TZID=America/Denver:20170419T083000,20190717T090000,20190718T090000,20190730T090000"
 -}
 type EXDATE
     = EXDATE String

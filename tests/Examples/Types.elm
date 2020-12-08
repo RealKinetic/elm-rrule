@@ -1,11 +1,11 @@
 module Examples.Types exposing (..)
 
-import Recurrence exposing (Recurrence)
+import RRule exposing (RRule)
 
 
 type alias Example =
     { description : String
     , rrule : List String
-    , recurrence : Recurrence
+    , recurrence : RRule
     , dates : List Int
     }

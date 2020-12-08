@@ -1,11 +1,11 @@
 module Examples.Daily exposing (..)
 
-import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import RRule exposing (Frequency(..), RRule, UntilCount(..))
 import Time exposing (Weekday(..))
 import TimeZone
 
 
-defaultRules : Recurrence
+defaultRules : RRule
 defaultRules =
     { weekStart = Mon
     , frequency = Daily

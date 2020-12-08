@@ -1,7 +1,7 @@
 module Examples.Weekly exposing (..)
 
 import Either exposing (Either(..))
-import Recurrence exposing (Frequency(..), Recurrence, UntilCount(..))
+import RRule exposing (Frequency(..), RRule, UntilCount(..))
 import Time exposing (Weekday(..))
 import TimeZone
 
@@ -9,7 +9,7 @@ import TimeZone
 {-| Tests are based on the examples in the iCalendar Spec
 <https://tools.ietf.org/html/rfc5545#section-3.8.5.3>
 -}
-defaultRules : Recurrence
+defaultRules : RRule
 defaultRules =
     { weekStart = Mon
     , frequency = Weekly

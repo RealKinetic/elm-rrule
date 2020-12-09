@@ -3,7 +3,7 @@ module Helper exposing (..)
 import Benchmark exposing (Benchmark, benchmark, describe)
 import Benchmark.Runner exposing (BenchmarkProgram, program)
 import Examples.Types exposing (Example)
-import Generator
+import RRule
 
 
 benchmarkExamples : String -> List Example -> BenchmarkProgram
@@ -15,4 +15,4 @@ benchmarkExamples desc examples =
 
 benchmarkExample : Example -> Benchmark
 benchmarkExample { description, rrule, recurrence, dates } =
-    benchmark description <| \_ -> Generator.run recurrence
+    benchmark description <| \_ -> RRule.all recurrence

@@ -58,7 +58,7 @@ type UntilCount
 
 
 between : { start : Posix, end : Posix } -> RRule -> List Posix
-between { start, end } preNormalizedRRule =
+between ({ start, end } as betweenWindow) preNormalizedRRule =
     let
         rrule =
             normalizeRRule preNormalizedRRule
@@ -71,19 +71,22 @@ between { start, end } preNormalizedRRule =
             -}
             hasNoExpands preNormalizedRRule
 
-        startTime =
-            {- TODO The below implementation (w/ the merge of dtstart and start)
-                broke events with a Count.
-                A temporary fix was added to filter all times after the start date.
-                This is all quite inefficient, and the code could be massively optimized.
-               -
-            -}
-            --
-            --if Util.gt start rrule.dtStart then
-            --    Util.mergeTimeOf rrule.tzid rrule.dtStart start
-            --
-            --else
-            rrule.dtStart
+        ( startTime, maybeFilterFunc ) =
+            case rrule.untilCount of
+                Just (Count _) ->
+                    {- We just naively run any RRULE with a COUNT and filter
+                       out everything outside the betweenWindow. This shouldn't
+                       be too troublesome since most event's with COUNTs have a
+                       relatively small COUNT.
+                    -}
+                    ( rrule.dtStart
+                    , List.filter (\time -> Util.gte time start)
+                    )
+
+                _ ->
+                    ( betweenStartTimeHelper rrule betweenWindow
+                    , identity
+                    )
 
         ceiling =
             if Util.lt end Util.year2250 then
@@ -98,7 +101,7 @@ between { start, end } preNormalizedRRule =
         (initWindow startTime rrule)
         startTime
         []
-        |> List.filter (\time -> Util.gte time start)
+        |> maybeFilterFunc
 
 
 all : RRule -> List Posix
@@ -110,9 +113,12 @@ all preNormalizedRRule =
         hasNoExpands_ =
             hasNoExpands preNormalizedRRule
     in
-    -- TODO Shouldn't assume dtStart is a valid instance time.
-    -- Need to validate first and find the first valid instance time if necessary.
-    runHelp hasNoExpands_ Util.year2250 rrule (initWindow rrule.dtStart rrule) rrule.dtStart []
+    runHelp hasNoExpands_
+        Util.year2250
+        rrule
+        (initWindow rrule.dtStart rrule)
+        rrule.dtStart
+        []
 
 
 runHelp : Bool -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
@@ -128,6 +134,7 @@ runHelp rruleHasNoExpands timeCeiling rrule window current acc =
             if rruleHasNoExpands then
                 -- If there are no expanding BYRULES we can confidently jump right
                 -- to the next time using the rrule's frequency (e.g. daily, weekly, yearly)
+                -- TODO Will this rarely/ever get called because of how we normalize the rrule?
                 TE.add (freqToInterval rrule.frequency)
                     rrule.interval
                     rrule.tzid
@@ -173,6 +180,29 @@ runHelp rruleHasNoExpands timeCeiling rrule window current acc =
 
     else
         runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime acc
+
+
+{-| Rounds betweenWindow.start up to the nearest valid recurring instance time.
+-}
+betweenStartTimeHelper : RRule -> { start : Posix, end : Posix } -> Posix
+betweenStartTimeHelper rrule { start, end } =
+    let
+        findValidStartTime time =
+            if Util.gte time end then
+                time
+
+            else if time |> withinRuleset rrule then
+                time
+
+            else
+                findValidStartTime (TE.add TE.Day 1 rrule.tzid time)
+    in
+    if Util.gte rrule.dtStart start then
+        rrule.dtStart
+
+    else
+        Util.mergeTimeOf rrule.tzid rrule.dtStart start
+            |> findValidStartTime
 
 
 {-| Information not contained in the rule necessary to determine the
@@ -242,7 +272,7 @@ initWindow : Posix -> RRule -> Window
 initWindow lowerBound rrule =
     { lowerBound = lowerBound
     , upperBound =
-        TE.ceiling (windowInterval rrule) rrule.tzid rrule.dtStart
+        TE.ceiling (windowInterval rrule) rrule.tzid lowerBound
             |> Util.subtract 1
     }
 
@@ -735,7 +765,7 @@ computeNextWindow rrule window =
             freqToInterval rrule.frequency
 
         newUpperBound =
-            -- Have to add 1 since our previous window is 23:59:59.000
+            -- Have to add 1 since our previous window upper bound is 23:59:59.999
             window.upperBound
                 |> Util.add 1
                 |> TE.add timeUnit rrule.interval rrule.tzid

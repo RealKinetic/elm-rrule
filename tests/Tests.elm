@@ -1,5 +1,6 @@
 module Tests exposing (..)
 
+import Examples.Between as Between
 import Examples.Custom as Custom
 import Examples.Daily as Daily
 import Examples.Monthly as Monthly
@@ -82,6 +83,16 @@ custom =
         ]
 
 
+suite : Test
+suite =
+    testBetweens
+        [ Between.example1
+        , Between.example2
+        , Between.example3
+        , Between.example4
+        ]
+
+
 testExamples : String -> List Example -> Test
 testExamples tipe recurrenceTests =
     describe tipe (List.map testExample recurrenceTests)
@@ -99,3 +110,16 @@ testExample { description, rrule, recurrence, dates } =
                 RRule.fromStrings rrule
                     |> Expect.equal (Ok recurrence)
         ]
+
+
+testBetweens : List Between.Example -> Test
+testBetweens betweenTests =
+    describe "RRule.between" (List.map testBetween betweenTests)
+
+
+testBetween : Between.Example -> Test
+testBetween { description, recurrence, window, dates } =
+    Test.test description <|
+        \_ ->
+            RRule.between window recurrence
+                |> Expect.equal (List.map Time.millisToPosix dates)

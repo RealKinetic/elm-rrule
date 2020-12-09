@@ -1,14 +1,12 @@
-module Between exposing (..)
+module Examples.Between exposing (..)
 
 import Either exposing (Either(..))
-import Expect
 import RRule exposing (Frequency(..), RRule, UntilCount(..))
-import Test exposing (Test, describe)
 import Time exposing (Posix, Weekday(..))
 import TimeZone
 
 
-type alias BetweenTest =
+type alias Example =
     { description : String
     , rrules : List String
     , recurrence : RRule
@@ -35,8 +33,8 @@ defaultRules =
     }
 
 
-between1 : BetweenTest
-between1 =
+example1 : Example
+example1 =
     { description = "One count weekly recurring outside of date range"
     , rrules =
         [ "DTSTART;TZID=America/Denver:20200804T110000"
@@ -58,8 +56,8 @@ between1 =
     }
 
 
-between2 : BetweenTest
-between2 =
+example2 : Example
+example2 =
     { description = "window.start after DTSTART, UNTIL before window.end"
     , rrules =
         [ "EXDATE;TZID=America/Denver:20190719T093000"
@@ -82,8 +80,8 @@ between2 =
     }
 
 
-between3 : BetweenTest
-between3 =
+example3 : Example
+example3 =
     { description = "window.start after DTSTART, window.end before UNTIL"
     , rrules =
         [ "EXDATE;TZID=America/Denver:20190719T093000"
@@ -106,8 +104,8 @@ between3 =
     }
 
 
-between4 : BetweenTest
-between4 =
+example4 : Example
+example4 =
     { description = "window.start well before DTSTART, window.end well after UNTIL"
     , rrules =
         [ "EXDATE;TZID=America/Denver:20190719T093000"
@@ -128,22 +126,3 @@ between4 =
         }
     , dates = [ 1559316600000, 1559921400000, 1560526200000, 1561131000000, 1561735800000, 1562340600000, 1562945400000, 1564155000000, 1564759800000 ]
     }
-
-
-toTest : BetweenTest -> Test
-toTest { description, recurrence, window, dates } =
-    Test.test description <|
-        \_ ->
-            RRule.between window recurrence
-                |> Expect.equal (List.map Time.millisToPosix dates)
-
-
-suite : Test
-suite =
-    [ between1
-    , between2
-    , between3
-    , between4
-    ]
-        |> List.map toTest
-        |> describe "RRule.between"

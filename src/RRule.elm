@@ -95,7 +95,7 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
             else
                 Util.year2250
     in
-    runHelp hasNoExpands_
+    run hasNoExpands_
         ceiling
         rrule
         (initWindow startTime rrule)
@@ -113,7 +113,7 @@ all preNormalizedRRule =
         hasNoExpands_ =
             hasNoExpands preNormalizedRRule
     in
-    runHelp hasNoExpands_
+    run hasNoExpands_
         Util.year2250
         rrule
         (initWindow rrule.dtStart rrule)
@@ -121,8 +121,8 @@ all preNormalizedRRule =
         []
 
 
-runHelp : Bool -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
-runHelp rruleHasNoExpands timeCeiling rrule window current acc =
+run : Bool -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
+run rruleHasNoExpands timeCeiling rrule window current acc =
     let
         nextByDay =
             -- This is NOT as performant as it could be.
@@ -176,10 +176,10 @@ runHelp rruleHasNoExpands timeCeiling rrule window current acc =
             |> withoutExDates
 
     else if current |> withinRuleset rrule then
-        runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
+        run rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
 
     else
-        runHelp rruleHasNoExpands timeCeiling rrule nextWindow nextTime acc
+        run rruleHasNoExpands timeCeiling rrule nextWindow nextTime acc
 
 
 {-| Rounds betweenWindow.start up to the nearest valid recurring instance time.

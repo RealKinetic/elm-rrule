@@ -71,37 +71,32 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
             -}
             hasNoExpands preNormalizedRRule
 
-        ( startTime, maybeFilterFunc ) =
-            case rrule.untilCount of
-                Just (Count _) ->
-                    {- We just naively run any RRULE with a COUNT and filter
-                       out everything outside the betweenWindow. This shouldn't
-                       be too troublesome since most event's with COUNTs have a
-                       relatively small COUNT.
-                    -}
-                    ( rrule.dtStart
-                    , List.filter (\time -> Util.gte time start)
-                    )
-
-                _ ->
-                    ( betweenStartTimeHelper rrule betweenWindow
-                    , identity
-                    )
-
         ceiling =
             if Util.lt end Util.year2250 then
                 end
 
             else
                 Util.year2250
+
+        runHelp { startTime, window } =
+            run hasNoExpands_ ceiling rrule window startTime []
     in
-    run hasNoExpands_
-        ceiling
-        rrule
-        (initWindow startTime rrule)
-        startTime
-        []
-        |> maybeFilterFunc
+    if hasCount rrule then
+        {- We just naively run any RRULE with a COUNT and filter
+           out everything outside the betweenWindow. This shouldn't
+           be too troublesome since most event's with COUNTs have a
+           relatively small COUNT.
+        -}
+        runHelp
+            { startTime = rrule.dtStart
+            , window = initWindow rrule.dtStart rrule
+            }
+            |> List.filter (\time -> Util.gte time start)
+
+    else
+        betweenStartTimeHelper rrule betweenWindow
+            |> Maybe.map runHelp
+            |> Maybe.withDefault []
 
 
 all : RRule -> List Posix
@@ -184,25 +179,107 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
 
 {-| Rounds betweenWindow.start up to the nearest valid recurring instance time.
 -}
-betweenStartTimeHelper : RRule -> { start : Posix, end : Posix } -> Posix
+betweenStartTimeHelper :
+    RRule
+    -> { start : Posix, end : Posix }
+    -> Maybe { startTime : Posix, window : Window }
 betweenStartTimeHelper rrule { start, end } =
     let
-        findValidStartTime time =
-            if Util.gte time end then
-                time
+        mergeWithDTSTART =
+            Util.mergeTimeOf rrule.tzid rrule.dtStart
 
-            else if time |> withinRuleset rrule then
-                time
+        {- When interval > 1 -}
+        ratchetUpByWindow window time =
+            {- Short circuit in case we exceed the betweenWindow.end -}
+            if Util.gt time end then
+                Nothing
+
+            else if
+                Util.gte time start
+                    && (time |> withinRuleset rrule)
+                    && inWindow time window
+            then
+                {- Return time if it's greater than betweenWindow.start,
+                   a valid instance, and in the current window
+                -}
+                Just { startTime = time, window = window }
+
+            else if not (inWindow time window) then
+                {- Move to the next window if we're outside the window bounds -}
+                let
+                    nextWindow =
+                        computeNextWindow rrule window
+                in
+                ratchetUpByWindow nextWindow
+                    (mergeWithDTSTART nextWindow.lowerBound)
 
             else
-                findValidStartTime (TE.add TE.Day 1 rrule.tzid time)
+                {- Otherwise move up to the next day. -}
+                ratchetUpByWindow window (TE.add TE.Day 1 rrule.tzid time)
+
+        {- When interval == 1 -}
+        ratchetUpByDay time =
+            if Util.gte time end then
+                Nothing
+
+            else if time |> withinRuleset rrule then
+                Just { startTime = time, window = initWindow time rrule }
+
+            else
+                ratchetUpByDay (TE.add TE.Day 1 rrule.tzid time)
+
+        {- Make sure we have a merged start datetime that is not
+           less than our betweenWindow.start threshold.
+        -}
+        mergedStartTime_ =
+            mergeWithDTSTART start
+
+        mergedStartTime =
+            if Util.gt start mergedStartTime_ then
+                TE.add TE.Day 1 rrule.tzid mergedStartTime_
+
+            else
+                mergedStartTime_
     in
-    if Util.gte rrule.dtStart start then
-        rrule.dtStart
+    {-
+       When should we ratchetUpByWindow and when should we ratchetUpByDay?
+
+       We'll ratchetUpByWindow if interval > 1 simply because it's too hard to
+       know if we're, for example, in the correct week to look for our instance if our
+       event occurs evey other week.
+
+       If interval == 1, which is the majority of events (e.g. weekly meetings, or birthdays),
+       then every frequency (except Yearly) seems less likely to be more efficient
+       to ratchetUpByWindow.
+
+       Yearly - ratchetByWindow seems more efficient nearly always.
+                Your dtstart is not likely to go back decades in the past.
+                At worst your dtstart will be something like 2 decades before
+                your betweenWindow.start (so 20 1-year window steps),
+                which is better than doing anywhere between 1 and 364
+                day-steps (w/ ratchetUpByDay)
+
+       ratchetByDay will always be more efficient if your dtstart is greater than:
+       Monthly - 30 months ago (3 years)
+       Weekly - 6 weeks ago
+       Daily - ratchetByDay == ratchetUpByWindow in this case.
+
+    -}
+    if Util.gt start end then
+        -- Prevent neverending instance search if start > end
+        Nothing
+
+    else if Util.gte rrule.dtStart start then
+        Just
+            { startTime = rrule.dtStart
+            , window = initWindow rrule.dtStart rrule
+            }
+
+    else if rrule.interval > 1 || rrule.frequency == Yearly then
+        ratchetUpByWindow (initWindow rrule.dtStart rrule) mergedStartTime
 
     else
-        Util.mergeTimeOf rrule.tzid rrule.dtStart start
-            |> findValidStartTime
+        ratchetUpByDay mergedStartTime
 
 
 {-| Information not contained in the rule necessary to determine the
@@ -259,6 +336,16 @@ normalizeRRule rrule =
 
         Daily ->
             rrule
+
+
+hasCount : RRule -> Bool
+hasCount rrule =
+    case rrule.untilCount of
+        Just (Count _) ->
+            True
+
+        _ ->
+            False
 
 
 

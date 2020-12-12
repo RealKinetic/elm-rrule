@@ -33,10 +33,10 @@ const toDTSTART = (posix, mTimezone) => {
     return 'DTSTART;TZID=' + timezone + ':' + startTime + ';';
 };
 
-const toUTC = (posix) =>
+const toUTC = posix =>
     DateTime.fromMillis(posix).setZone('utc', { keepLocalTime: true }).toJSDate();
 
-const generate = (rrules, mTimeZone) =>
+const all = (rrules, mTimeZone) =>
     rrulestr(rrules)
         .all()
         .map((date) => {
@@ -50,4 +50,28 @@ const generate = (rrules, mTimeZone) =>
             }
         });
 
-module.exports = {generate, toDTSTART};
+const between = (rrules, mTimeZone) => (windowStart, windowEnd) => {
+    // Yes, this `setZone` and `toUTC` business looks confusing.
+    // rrule.js has some shit API decisions for handling timezones.
+    // See https://github.com/jakubroztocil/rrule#important-use-utc-dates
+    const [start, end] = [
+        toUTC(windowStart),
+        toUTC(windowEnd),
+    ];
+
+    return rrulestr(rrules)
+        .between(start, end, true)
+        .map(date => {
+            if (mTimeZone !== 'UTC') {
+                return DateTime.fromJSDate(date)
+                    .toUTC()
+                    .setZone('local', { keepLocalTime: true })
+                    .toMillis();
+            } else {
+                return date.getTime();
+            }
+        });
+}
+
+
+module.exports = {all, toDTSTART, between};

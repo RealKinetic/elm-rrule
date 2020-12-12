@@ -90,6 +90,13 @@ suite =
         , Between.example2
         , Between.example3
         , Between.example4
+        , Between.example5
+        , Between.example6
+        , Between.example7
+        , Between.example8_1
+        , Between.example8_2
+        , Between.example8_3
+        , Between.example9
         ]
 
 

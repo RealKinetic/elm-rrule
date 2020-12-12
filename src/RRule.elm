@@ -188,8 +188,33 @@ betweenStartTimeHelper rrule { start, end } =
         mergeWithDTSTART =
             Util.mergeTimeOf rrule.tzid rrule.dtStart
 
+        {- Make sure we have a merged start datetime that is not
+           less than our betweenWindow.start threshold.
+        -}
+        mergedStartTime_ =
+            mergeWithDTSTART start
+
+        mergedStartTime =
+            if Util.gt start mergedStartTime_ then
+                TE.add TE.Day 1 rrule.tzid mergedStartTime_
+
+            else
+                mergedStartTime_
+
         {- When interval > 1 -}
-        ratchetUpByWindow window time =
+        {- First find the right window -}
+        ratchetUpByWindow window =
+            if Util.gt window.lowerBound end then
+                Nothing
+
+            else if inWindow mergedStartTime window then
+                ratchetUpByWindowHelp window mergedStartTime
+
+            else
+                ratchetUpByWindow (computeNextWindow rrule window)
+
+        {- Then find the first valid instance within that window (or the next window) -}
+        ratchetUpByWindowHelp window time =
             {- Short circuit in case we exceed the betweenWindow.end -}
             if Util.gt time end then
                 Nothing
@@ -210,12 +235,12 @@ betweenStartTimeHelper rrule { start, end } =
                     nextWindow =
                         computeNextWindow rrule window
                 in
-                ratchetUpByWindow nextWindow
+                ratchetUpByWindowHelp nextWindow
                     (mergeWithDTSTART nextWindow.lowerBound)
 
             else
                 {- Otherwise move up to the next day. -}
-                ratchetUpByWindow window (TE.add TE.Day 1 rrule.tzid time)
+                ratchetUpByWindowHelp window (TE.add TE.Day 1 rrule.tzid time)
 
         {- When interval == 1 -}
         ratchetUpByDay time =
@@ -227,19 +252,6 @@ betweenStartTimeHelper rrule { start, end } =
 
             else
                 ratchetUpByDay (TE.add TE.Day 1 rrule.tzid time)
-
-        {- Make sure we have a merged start datetime that is not
-           less than our betweenWindow.start threshold.
-        -}
-        mergedStartTime_ =
-            mergeWithDTSTART start
-
-        mergedStartTime =
-            if Util.gt start mergedStartTime_ then
-                TE.add TE.Day 1 rrule.tzid mergedStartTime_
-
-            else
-                mergedStartTime_
     in
     {-
        When should we ratchetUpByWindow and when should we ratchetUpByDay?
@@ -276,7 +288,7 @@ betweenStartTimeHelper rrule { start, end } =
             }
 
     else if rrule.interval > 1 || rrule.frequency == Yearly then
-        ratchetUpByWindow (initWindow rrule.dtStart rrule) mergedStartTime
+        ratchetUpByWindow (initWindow rrule.dtStart rrule)
 
     else
         ratchetUpByDay mergedStartTime

@@ -71,8 +71,8 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
             else
                 Util.year2250
 
-        runHelp { startTime, window } =
-            run (hasNoExpands rrule) ceiling rrule window startTime []
+        runHelp { firstInstanceTime, startingWindow } =
+            run ceiling rrule startingWindow firstInstanceTime []
     in
     if hasCount rrule then
         {- We just naively run any RRULE with a COUNT and filter
@@ -81,13 +81,13 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
            relatively small COUNT.
         -}
         runHelp
-            { startTime = rrule.dtStart
-            , window = initWindow rrule.dtStart rrule
+            { firstInstanceTime = rrule.dtStart
+            , startingWindow = initWindow rrule.dtStart rrule
             }
             |> List.filter (\time -> Util.gte time start)
 
     else
-        betweenStartTimeHelper rrule betweenWindow
+        betweenHelper rrule betweenWindow
             |> Maybe.map runHelp
             |> Maybe.withDefault []
 
@@ -166,11 +166,11 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
 
 {-| Rounds betweenWindow.start up to the nearest valid recurring instance time.
 -}
-betweenStartTimeHelper :
+betweenHelper :
     RRule
     -> { start : Posix, end : Posix }
-    -> Maybe { startTime : Posix, window : Window }
-betweenStartTimeHelper rrule { start, end } =
+    -> Maybe { firstInstanceTime : Posix, startingWindow : Window }
+betweenHelper rrule { start, end } =
     let
         mergeWithDTSTART =
             Util.mergeTimeOf rrule.tzid rrule.dtStart
@@ -204,7 +204,7 @@ betweenStartTimeHelper rrule { start, end } =
                 {- Return time if it's greater than betweenWindow.start,
                    a valid instance, and in the current window
                 -}
-                Just { startTime = time, window = window }
+                Just { firstInstanceTime = time, startingWindow = window }
 
             else if not (inWindow time window) then
                 {- Move to the next window if we're outside the window bounds -}
@@ -225,8 +225,8 @@ betweenStartTimeHelper rrule { start, end } =
 
     else if Util.gte rrule.dtStart start then
         Just
-            { startTime = rrule.dtStart
-            , window = initWindow rrule.dtStart rrule
+            { firstInstanceTime = rrule.dtStart
+            , startingWindow = initWindow rrule.dtStart rrule
             }
 
     else

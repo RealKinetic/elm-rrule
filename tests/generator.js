@@ -52,7 +52,7 @@ const all = (rrules, mTimeZone) =>
 
 const between = (rrules, mTimeZone) => (windowStart, windowEnd) => {
     // Yes, this `setZone` and `toUTC` business looks confusing.
-    // rrule.js has some shit API decisions for handling timezones.
+    // rrule.js has some unusual API decisions for handling timezones.
     // See https://github.com/jakubroztocil/rrule#important-use-utc-dates
     const [start, end] = [
         toUTC(windowStart),

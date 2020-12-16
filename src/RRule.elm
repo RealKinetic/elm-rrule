@@ -1,4 +1,14 @@
-module RRule exposing (Error(..), Frequency(..), RRule, UntilCount(..), all, between, errorToString, fromStrings, fromStringsWithStart)
+module RRule exposing
+    ( Error(..)
+    , Frequency(..)
+    , RRule
+    , UntilCount(..)
+    , all
+    , between
+    , errorToString
+    , fromStrings
+    , fromStringsWithStart
+    )
 
 import Date exposing (Date, Month)
 import Dict
@@ -13,16 +23,13 @@ import Util
 
 {-| -}
 type alias RRule =
-    { -- Required
-      frequency : Frequency
+    { frequency : Frequency
     , weekStart : Weekday
     , interval : Int
     , dtStart : Posix
 
     -- TODO Support floating times by having the user provide a fallback IANA / Zone?
     , tzid : Zone
-
-    -- Optional
     , untilCount : Maybe UntilCount
     , byDay : List (Either ( Int, Weekday ) Weekday)
     , byMonthDay : List Int
@@ -31,12 +38,6 @@ type alias RRule =
     , byYearDay : List Int
     , exdates : List Posix
     , rdates : List Posix
-
-    -- Currently not supported
-    --, bySecond : List Int
-    --, byMinute : List Int
-    --, byHour : List Int
-    --, bySetPos : List Int
     }
 
 
@@ -63,14 +64,6 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
         rrule =
             normalizeRRule preNormalizedRRule
 
-        hasNoExpands_ =
-            {-
-               TODO we'll potentially add expands in the normalized version.
-                Will checking against the prenormalized rrule always result
-                in correct behavior.
-            -}
-            hasNoExpands preNormalizedRRule
-
         ceiling =
             if Util.lt end Util.year2250 then
                 end
@@ -78,8 +71,13 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
             else
                 Util.year2250
 
-        runHelp { startTime, window } =
-            run hasNoExpands_ ceiling rrule window startTime []
+        runHelp { firstInstanceTime, startingWindow } =
+            run (hasNoExpands preNormalizedRRule)
+                ceiling
+                rrule
+                startingWindow
+                firstInstanceTime
+                []
     in
     if hasCount rrule then
         {- We just naively run any RRULE with a COUNT and filter
@@ -88,13 +86,13 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
            relatively small COUNT.
         -}
         runHelp
-            { startTime = rrule.dtStart
-            , window = initWindow rrule.dtStart rrule
+            { firstInstanceTime = rrule.dtStart
+            , startingWindow = initWindow rrule.dtStart rrule
             }
             |> List.filter (\time -> Util.gte time start)
 
     else
-        betweenStartTimeHelper rrule betweenWindow
+        betweenHelper rrule betweenWindow
             |> Maybe.map runHelp
             |> Maybe.withDefault []
 
@@ -104,11 +102,8 @@ all preNormalizedRRule =
     let
         rrule =
             normalizeRRule preNormalizedRRule
-
-        hasNoExpands_ =
-            hasNoExpands preNormalizedRRule
     in
-    run hasNoExpands_
+    run (hasNoExpands preNormalizedRRule)
         Util.year2250
         rrule
         (initWindow rrule.dtStart rrule)
@@ -120,25 +115,17 @@ run : Bool -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
 run rruleHasNoExpands timeCeiling rrule window current acc =
     let
         nextByDay =
-            -- This is NOT as performant as it could be.
-            -- We are checking every day within a given window.
-            -- This means we'll check all 365 days to find a single yearly event.
             TE.add TE.Day 1 rrule.tzid current
 
         nextTime =
             if rruleHasNoExpands then
-                -- If there are no expanding BYRULES we can confidently jump right
-                -- to the next time using the rrule's frequency (e.g. daily, weekly, yearly)
-                -- TODO Will this rarely/ever get called because of how we normalize the rrule?
+                -- The vast majority of these will be YEARLY events, e.g. birthdays.
                 TE.add (freqToInterval rrule.frequency)
                     rrule.interval
                     rrule.tzid
                     current
 
             else if inWindow nextByDay window then
-                -- If there are expanding BYRULES we need to check each day within
-                -- the window. TODO Finish comment
-                --
                 -- TODO check to see if this behaving correctly by adding tests
                 -- for rrule's with RULE:FREQ=WEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
                 nextByDay
@@ -171,6 +158,9 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
             |> withoutExDates
 
     else if current |> withinRuleset rrule then
+        {- Note: DO NOT partially apply `run` in the `let` statement above.
+           We need to keep the full call to `run` down here for tail-call optimization.
+        -}
         run rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
 
     else
@@ -179,42 +169,32 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
 
 {-| Rounds betweenWindow.start up to the nearest valid recurring instance time.
 -}
-betweenStartTimeHelper :
+betweenHelper :
     RRule
     -> { start : Posix, end : Posix }
-    -> Maybe { startTime : Posix, window : Window }
-betweenStartTimeHelper rrule { start, end } =
+    -> Maybe { firstInstanceTime : Posix, startingWindow : Window }
+betweenHelper rrule { start, end } =
     let
         mergeWithDTSTART =
             Util.mergeTimeOf rrule.tzid rrule.dtStart
 
-        {- Make sure we have a merged start datetime that is not
-           less than our betweenWindow.start threshold.
-        -}
         mergedStartTime_ =
             mergeWithDTSTART start
 
         mergedStartTime =
             if Util.gt start mergedStartTime_ then
+                {- Bump it up to the next day to ensure we're not
+                   lowering the betweenWindow.start floor. If we did
+                   this, we'd risk including instance times which lay
+                   outside of the window.
+
+                -}
                 TE.add TE.Day 1 rrule.tzid mergedStartTime_
 
             else
                 mergedStartTime_
 
-        {- When interval > 1 -}
-        {- First find the right window -}
-        ratchetUpByWindow window =
-            if Util.gt window.lowerBound end then
-                Nothing
-
-            else if inWindow mergedStartTime window then
-                ratchetUpByWindowHelp window mergedStartTime
-
-            else
-                ratchetUpByWindow (computeNextWindow rrule window)
-
-        {- Then find the first valid instance within that window (or the next window) -}
-        ratchetUpByWindowHelp window time =
+        findFirstInstance window time =
             {- Short circuit in case we exceed the betweenWindow.end -}
             if Util.gt time end then
                 Nothing
@@ -227,7 +207,7 @@ betweenStartTimeHelper rrule { start, end } =
                 {- Return time if it's greater than betweenWindow.start,
                    a valid instance, and in the current window
                 -}
-                Just { startTime = time, window = window }
+                Just { firstInstanceTime = time, startingWindow = window }
 
             else if not (inWindow time window) then
                 {- Move to the next window if we're outside the window bounds -}
@@ -235,63 +215,25 @@ betweenStartTimeHelper rrule { start, end } =
                     nextWindow =
                         computeNextWindow rrule window
                 in
-                ratchetUpByWindowHelp nextWindow
+                findFirstInstance nextWindow
                     (mergeWithDTSTART nextWindow.lowerBound)
 
             else
                 {- Otherwise move up to the next day. -}
-                ratchetUpByWindowHelp window (TE.add TE.Day 1 rrule.tzid time)
-
-        {- When interval == 1 -}
-        ratchetUpByDay time =
-            if Util.gte time end then
-                Nothing
-
-            else if time |> withinRuleset rrule then
-                Just { startTime = time, window = initWindow time rrule }
-
-            else
-                ratchetUpByDay (TE.add TE.Day 1 rrule.tzid time)
+                findFirstInstance window (TE.add TE.Day 1 rrule.tzid time)
     in
-    {-
-       When should we ratchetUpByWindow and when should we ratchetUpByDay?
-
-       We'll ratchetUpByWindow if interval > 1 simply because it's too hard to
-       know if we're, for example, in the correct week to look for our instance if our
-       event occurs evey other week.
-
-       If interval == 1, which is the majority of events (e.g. weekly meetings, or birthdays),
-       then every frequency (except Yearly) seems less likely to be more efficient
-       to ratchetUpByWindow.
-
-       Yearly - ratchetByWindow seems more efficient nearly always.
-                Your dtstart is not likely to go back decades in the past.
-                At worst your dtstart will be something like 2 decades before
-                your betweenWindow.start (so 20 1-year window steps),
-                which is better than doing anywhere between 1 and 364
-                day-steps (w/ ratchetUpByDay)
-
-       ratchetByDay will always be more efficient if your dtstart is greater than:
-       Monthly - 30 months ago (3 years)
-       Weekly - 6 weeks ago
-       Daily - ratchetByDay == ratchetUpByWindow in this case.
-
-    -}
     if Util.gt start end then
         -- Prevent neverending instance search if start > end
         Nothing
 
     else if Util.gte rrule.dtStart start then
         Just
-            { startTime = rrule.dtStart
-            , window = initWindow rrule.dtStart rrule
+            { firstInstanceTime = rrule.dtStart
+            , startingWindow = initWindow rrule.dtStart rrule
             }
 
-    else if rrule.interval > 1 || rrule.frequency == Yearly then
-        ratchetUpByWindow (initWindow rrule.dtStart rrule)
-
     else
-        ratchetUpByDay mergedStartTime
+        findFirstInstance (initWindow rrule.dtStart rrule) mergedStartTime
 
 
 {-| Information not contained in the rule necessary to determine the
@@ -323,7 +265,7 @@ normalizeRRule rrule =
             case ( rrule.byDay, rrule.byMonthDay ) of
                 ( [], [] ) ->
                     { rrule
-                      -- TODO Should this be byMonthDay or byDay?
+                      -- TODO Should this be byMonthDay or a `Left (_, _)` byDay?
                         | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
                     }
 
@@ -331,16 +273,40 @@ normalizeRRule rrule =
                     rrule
 
         Yearly ->
-            {-
-               TODO This one is slightly odd. I think it needs some correcting.
-                running `hasNoExpands rrule` should work, but I think this is
-                preventing it from being so. We are running that on the prenormalized
-                rrule atm.
-            -}
-            case ( rrule.byDay, rrule.byMonthDay, rrule.byYearDay ) of
-                ( [], [], [] ) ->
+            case
+                ( ( rrule.byDay, rrule.byMonthDay )
+                , ( rrule.byYearDay, rrule.byWeekNo, rrule.byMonth )
+                )
+            of
+                ( ( [], [] ), ( [], [], [] ) ) ->
+                    -- with no BYRULES we infer the month and monthday
+                    { rrule
+                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
+                        , byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( [], [] ), ( [], [], _ :: _ ) ) ->
+                    -- with only byMonth we infer the monthday
                     { rrule
                         | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( _ :: _, [] ), ( [], [], [] ) ) ->
+                    -- with only byDay we infer the month
+                    { rrule
+                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( [], _ :: _ ), ( [], [], [] ) ) ->
+                    -- with only byMonthDay we infer the month
+                    { rrule
+                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( [], [] ), ( [], _ :: _, [] ) ) ->
+                    -- with only byWeekNo we infer the weekday
+                    { rrule
+                        | byDay = [ Right <| Time.toWeekday rrule.tzid rrule.dtStart ]
                     }
 
                 _ ->
@@ -358,38 +324,6 @@ hasCount rrule =
 
         _ ->
             False
-
-
-
-{- Window
-
-   TODO Helps ???
--}
-
-
-initWindow : Posix -> RRule -> Window
-initWindow lowerBound rrule =
-    { lowerBound = lowerBound
-    , upperBound =
-        TE.ceiling (windowInterval rrule) rrule.tzid lowerBound
-            |> Util.subtract 1
-    }
-
-
-windowInterval : RRule -> TE.Interval
-windowInterval rrule =
-    case rrule.frequency of
-        Daily ->
-            TE.Day
-
-        Weekly ->
-            Util.weekdayToInterval rrule.weekStart
-
-        Monthly ->
-            TE.Month
-
-        Yearly ->
-            TE.Year
 
 
 withinRuleset : RRule -> Posix -> Bool
@@ -836,9 +770,47 @@ Mon, Wed, Fri every other week.
 The window will be a week long, but will skip a week when the next window
 is computed.
 
+Put in other terms, the window exists to help us when rrule.interval > 1.
+
+For example:
+
+Let's say we have an event which occurs every three weeks on Monday.
+FREQ=WEEKLY;INTERVAL=3;BYDAY=MO
+
+[SMTWTFS] SMTWTFS SMTWTFS [SMTWTFS] SMTWTFS
+
+The M's within the brackets are Mondays that sit in an "on-week", or a window.
+Essentially, the window helps us skip over "off-weeks".
+The same is true for other frequencies. We skip off-days, off-months, and off-years.
+
 -}
 type alias Window =
     { lowerBound : Posix, upperBound : Posix }
+
+
+initWindow : Posix -> RRule -> Window
+initWindow lowerBound rrule =
+    { lowerBound = lowerBound
+    , upperBound =
+        TE.ceiling (windowInterval rrule) rrule.tzid lowerBound
+            |> Util.subtract 1
+    }
+
+
+windowInterval : RRule -> TE.Interval
+windowInterval rrule =
+    case rrule.frequency of
+        Daily ->
+            TE.Day
+
+        Weekly ->
+            Util.weekdayToInterval rrule.weekStart
+
+        Monthly ->
+            TE.Month
+
+        Yearly ->
+            TE.Year
 
 
 {-| -}
@@ -851,8 +823,6 @@ inWindow time { lowerBound, upperBound } =
             , Time.posixToMillis upperBound
             )
     in
-    -- TODO Inclusive or exclusive?
-    -- Depends on how we compute the bounds.
     time_ >= lowerBound_ && time_ <= upperBound_
 
 
@@ -1202,16 +1172,6 @@ parseDateToParts =
         |= P.succeed 0
         |= P.succeed 0
         |= P.succeed 0
-
-
-{-| "20190806"
--}
-parseDate : Parser Date
-parseDate =
-    P.succeed Date.fromCalendarDate
-        |= chompDigits 4
-        |= (chompDigits 2 |> P.map Date.numberToMonth)
-        |= chompDigits 2
 
 
 parseNegatableInt : Parser Int

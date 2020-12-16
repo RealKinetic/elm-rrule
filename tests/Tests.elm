@@ -80,6 +80,7 @@ custom =
         , Custom.example4
         , Custom.example5
         , Custom.example6
+        , Custom.example7
         ]
 
 
@@ -97,6 +98,10 @@ suite =
         , Between.example8_2
         , Between.example8_3
         , Between.example9
+        , Between.example10
+        , Between.example11
+        , Between.example12
+        , Between.example13
         ]
 
 

@@ -149,3 +149,20 @@ example6 =
         }
     , dates = [ 1591164000000, 1591768800000, 1592373600000, 1592978400000, 1593583200000, 1594188000000, 1594792800000, 1595397600000, 1596002400000, 1596607200000, 1597212000000, 1597816800000 ]
     }
+
+
+{-| Le birthday
+-}
+example7 =
+    { description = "Infer the day/month in a yearly event. No byrules."
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:19870701T000000"
+        , "RRULE:FREQ=YEARLY;COUNT=3"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 3)
+            , dtStart = Time.millisToPosix 552117600000
+        }
+    , dates = [ 552117600000, 583740000000, 615276000000 ]
+    }

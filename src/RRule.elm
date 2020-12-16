@@ -72,7 +72,12 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
                 Util.year2250
 
         runHelp { firstInstanceTime, startingWindow } =
-            run ceiling rrule startingWindow firstInstanceTime []
+            run (hasNoExpands preNormalizedRRule)
+                ceiling
+                rrule
+                startingWindow
+                firstInstanceTime
+                []
     in
     if hasCount rrule then
         {- We just naively run any RRULE with a COUNT and filter
@@ -98,7 +103,7 @@ all preNormalizedRRule =
         rrule =
             normalizeRRule preNormalizedRRule
     in
-    run (hasNoExpands rrule)
+    run (hasNoExpands preNormalizedRRule)
         Util.year2250
         rrule
         (initWindow rrule.dtStart rrule)
@@ -114,18 +119,13 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
 
         nextTime =
             if rruleHasNoExpands then
-                -- If there are no expanding BYRULES we can confidently jump right
-                -- to the next time using the rrule's frequency (e.g. daily, weekly, yearly)
-                -- TODO Will this rarely/ever get called because of how we normalize the rrule?
+                -- The vast majority of these will be YEARLY events, e.g. birthdays.
                 TE.add (freqToInterval rrule.frequency)
                     rrule.interval
                     rrule.tzid
                     current
 
             else if inWindow nextByDay window then
-                -- If there are expanding BYRULES we need to check each day within
-                -- the window. TODO Finish comment
-                --
                 -- TODO check to see if this behaving correctly by adding tests
                 -- for rrule's with RULE:FREQ=WEEKLY;BYDAY=SA,SU,MO;WEEKSTART=SU and MO;
                 nextByDay

@@ -326,38 +326,6 @@ hasCount rrule =
             False
 
 
-
-{- Window
-
-   TODO Helps ???
--}
-
-
-initWindow : Posix -> RRule -> Window
-initWindow lowerBound rrule =
-    { lowerBound = lowerBound
-    , upperBound =
-        TE.ceiling (windowInterval rrule) rrule.tzid lowerBound
-            |> Util.subtract 1
-    }
-
-
-windowInterval : RRule -> TE.Interval
-windowInterval rrule =
-    case rrule.frequency of
-        Daily ->
-            TE.Day
-
-        Weekly ->
-            Util.weekdayToInterval rrule.weekStart
-
-        Monthly ->
-            TE.Month
-
-        Yearly ->
-            TE.Year
-
-
 withinRuleset : RRule -> Posix -> Bool
 withinRuleset rrule time =
     withinByRules rrule time
@@ -818,6 +786,31 @@ The same is true for other frequencies. We skip off-days, off-months, and off-ye
 -}
 type alias Window =
     { lowerBound : Posix, upperBound : Posix }
+
+
+initWindow : Posix -> RRule -> Window
+initWindow lowerBound rrule =
+    { lowerBound = lowerBound
+    , upperBound =
+        TE.ceiling (windowInterval rrule) rrule.tzid lowerBound
+            |> Util.subtract 1
+    }
+
+
+windowInterval : RRule -> TE.Interval
+windowInterval rrule =
+    case rrule.frequency of
+        Daily ->
+            TE.Day
+
+        Weekly ->
+            Util.weekdayToInterval rrule.weekStart
+
+        Monthly ->
+            TE.Month
+
+        Yearly ->
+            TE.Year
 
 
 {-| -}

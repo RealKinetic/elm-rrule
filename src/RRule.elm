@@ -1,4 +1,14 @@
-module RRule exposing (Error(..), Frequency(..), RRule, UntilCount(..), all, between, errorToString, fromStrings, fromStringsWithStart)
+module RRule exposing
+    ( Error(..)
+    , Frequency(..)
+    , RRule
+    , UntilCount(..)
+    , all
+    , between
+    , errorToString
+    , fromStrings
+    , fromStringsWithStart
+    )
 
 import Date exposing (Date, Month)
 import Dict

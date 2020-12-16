@@ -158,6 +158,9 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
             |> withoutExDates
 
     else if current |> withinRuleset rrule then
+        {- Note: DO NOT partially apply `run` in the `let` statement above.
+           We need to keep the full call to `run` down here for tail-call optimization.
+        -}
         run rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
 
     else

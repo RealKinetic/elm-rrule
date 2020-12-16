@@ -63,14 +63,6 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
         rrule =
             normalizeRRule preNormalizedRRule
 
-        hasNoExpands_ =
-            {-
-               TODO we'll potentially add expands in the normalized version.
-                Will checking against the prenormalized rrule always result
-                in correct behavior.
-            -}
-            hasNoExpands preNormalizedRRule
-
         ceiling =
             if Util.lt end Util.year2250 then
                 end
@@ -79,7 +71,7 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
                 Util.year2250
 
         runHelp { startTime, window } =
-            run hasNoExpands_ ceiling rrule window startTime []
+            run (hasNoExpands rrule) ceiling rrule window startTime []
     in
     if hasCount rrule then
         {- We just naively run any RRULE with a COUNT and filter
@@ -104,11 +96,8 @@ all preNormalizedRRule =
     let
         rrule =
             normalizeRRule preNormalizedRRule
-
-        hasNoExpands_ =
-            hasNoExpands preNormalizedRRule
     in
-    run hasNoExpands_
+    run (hasNoExpands rrule)
         Util.year2250
         rrule
         (initWindow rrule.dtStart rrule)
@@ -275,7 +264,7 @@ normalizeRRule rrule =
             case ( rrule.byDay, rrule.byMonthDay ) of
                 ( [], [] ) ->
                     { rrule
-                      -- TODO Should this be byMonthDay or byDay?
+                      -- TODO Should this be byMonthDay or a `Left (_, _)` byDay?
                         | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
                     }
 
@@ -283,16 +272,40 @@ normalizeRRule rrule =
                     rrule
 
         Yearly ->
-            {-
-               TODO This one is slightly odd. I think it needs some correcting.
-                running `hasNoExpands rrule` should work, but I think this is
-                preventing it from being so. We are running that on the prenormalized
-                rrule atm.
-            -}
-            case ( rrule.byDay, rrule.byMonthDay, rrule.byYearDay ) of
-                ( [], [], [] ) ->
+            case
+                ( ( rrule.byDay, rrule.byMonthDay )
+                , ( rrule.byYearDay, rrule.byWeekNo, rrule.byMonth )
+                )
+            of
+                ( ( [], [] ), ( [], [], [] ) ) ->
+                    -- with no BYRULES we infer the month and monthday
+                    { rrule
+                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
+                        , byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( [], [] ), ( [], [], _ :: _ ) ) ->
+                    -- with only byMonth we infer the monthday
                     { rrule
                         | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( _ :: _, [] ), ( [], [], [] ) ) ->
+                    -- with only byDay we infer the month
+                    { rrule
+                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( [], _ :: _ ), ( [], [], [] ) ) ->
+                    -- with only byMonthDay we infer the month
+                    { rrule
+                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
+                    }
+
+                ( ( [], [] ), ( [], _ :: _, [] ) ) ->
+                    -- with only byWeekNo we infer the weekday
+                    { rrule
+                        | byDay = [ Right <| Time.toWeekday rrule.tzid rrule.dtStart ]
                     }
 
                 _ ->

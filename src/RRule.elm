@@ -1178,16 +1178,6 @@ parseDateToParts =
         |= P.succeed 0
 
 
-{-| "20190806"
--}
-parseDate : Parser Date
-parseDate =
-    P.succeed Date.fromCalendarDate
-        |= chompDigits 4
-        |= (chompDigits 2 |> P.map Date.numberToMonth)
-        |= chompDigits 2
-
-
 parseNegatableInt : Parser Int
 parseNegatableInt =
     P.oneOf

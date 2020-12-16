@@ -110,9 +110,6 @@ run : Bool -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
 run rruleHasNoExpands timeCeiling rrule window current acc =
     let
         nextByDay =
-            -- This is NOT as performant as it could be.
-            -- We are checking every day within a given window.
-            -- This means we'll check all 365 days to find a single yearly event.
             TE.add TE.Day 1 rrule.tzid current
 
         nextTime =
@@ -802,6 +799,19 @@ Mon, Wed, Fri every other week.
 The window will be a week long, but will skip a week when the next window
 is computed.
 
+Put in other terms, the window exists to help us when rrule.interval > 1.
+
+For example:
+
+Let's say we have an event which occurs every three weeks on Monday.
+FREQ=WEEKLY;INTERVAL=3;BYDAY=MO
+
+[SMTWTFS] SMTWTFS SMTWTFS [SMTWTFS] SMTWTFS
+
+The M's within the brackets are Mondays that sit in an "on-week", or a window.
+Essentially, the window helps us skip over "off-weeks".
+The same is true for other frequencies. We skip off-days, off-months, and off-years.
+
 -}
 type alias Window =
     { lowerBound : Posix, upperBound : Posix }
@@ -817,8 +827,6 @@ inWindow time { lowerBound, upperBound } =
             , Time.posixToMillis upperBound
             )
     in
-    -- TODO Inclusive or exclusive?
-    -- Depends on how we compute the bounds.
     time_ >= lowerBound_ && time_ <= upperBound_
 
 

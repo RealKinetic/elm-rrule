@@ -188,33 +188,23 @@ betweenStartTimeHelper rrule { start, end } =
         mergeWithDTSTART =
             Util.mergeTimeOf rrule.tzid rrule.dtStart
 
-        {- Make sure we have a merged start datetime that is not
-           less than our betweenWindow.start threshold.
-        -}
         mergedStartTime_ =
             mergeWithDTSTART start
 
         mergedStartTime =
             if Util.gt start mergedStartTime_ then
+                {- Bump it up to the next day to ensure we're not
+                   lowering the betweenWindow.start floor. If we did
+                   this, we'd risk including instance times which lay
+                   outside of the window.
+
+                -}
                 TE.add TE.Day 1 rrule.tzid mergedStartTime_
 
             else
                 mergedStartTime_
 
-        {- When interval > 1 -}
-        {- First find the right window -}
-        ratchetUpByWindow window =
-            if Util.gt window.lowerBound end then
-                Nothing
-
-            else if inWindow mergedStartTime window then
-                ratchetUpByWindowHelp window mergedStartTime
-
-            else
-                ratchetUpByWindow (computeNextWindow rrule window)
-
-        {- Then find the first valid instance within that window (or the next window) -}
-        ratchetUpByWindowHelp window time =
+        findFirstInstance window time =
             {- Short circuit in case we exceed the betweenWindow.end -}
             if Util.gt time end then
                 Nothing
@@ -235,48 +225,13 @@ betweenStartTimeHelper rrule { start, end } =
                     nextWindow =
                         computeNextWindow rrule window
                 in
-                ratchetUpByWindowHelp nextWindow
+                findFirstInstance nextWindow
                     (mergeWithDTSTART nextWindow.lowerBound)
 
             else
                 {- Otherwise move up to the next day. -}
-                ratchetUpByWindowHelp window (TE.add TE.Day 1 rrule.tzid time)
-
-        {- When interval == 1 -}
-        ratchetUpByDay time =
-            if Util.gte time end then
-                Nothing
-
-            else if time |> withinRuleset rrule then
-                Just { startTime = time, window = initWindow time rrule }
-
-            else
-                ratchetUpByDay (TE.add TE.Day 1 rrule.tzid time)
+                findFirstInstance window (TE.add TE.Day 1 rrule.tzid time)
     in
-    {-
-       When should we ratchetUpByWindow and when should we ratchetUpByDay?
-
-       We'll ratchetUpByWindow if interval > 1 simply because it's too hard to
-       know if we're, for example, in the correct week to look for our instance if our
-       event occurs evey other week.
-
-       If interval == 1, which is the majority of events (e.g. weekly meetings, or birthdays),
-       then every frequency (except Yearly) seems less likely to be more efficient
-       to ratchetUpByWindow.
-
-       Yearly - ratchetByWindow seems more efficient nearly always.
-                Your dtstart is not likely to go back decades in the past.
-                At worst your dtstart will be something like 2 decades before
-                your betweenWindow.start (so 20 1-year window steps),
-                which is better than doing anywhere between 1 and 364
-                day-steps (w/ ratchetUpByDay)
-
-       ratchetByDay will always be more efficient if your dtstart is greater than:
-       Monthly - 30 months ago (3 years)
-       Weekly - 6 weeks ago
-       Daily - ratchetByDay == ratchetUpByWindow in this case.
-
-    -}
     if Util.gt start end then
         -- Prevent neverending instance search if start > end
         Nothing
@@ -287,11 +242,8 @@ betweenStartTimeHelper rrule { start, end } =
             , window = initWindow rrule.dtStart rrule
             }
 
-    else if rrule.interval > 1 || rrule.frequency == Yearly then
-        ratchetUpByWindow (initWindow rrule.dtStart rrule)
-
     else
-        ratchetUpByDay mergedStartTime
+        findFirstInstance (initWindow rrule.dtStart rrule) mergedStartTime
 
 
 {-| Information not contained in the rule necessary to determine the

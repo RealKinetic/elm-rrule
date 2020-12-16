@@ -294,3 +294,89 @@ example9 =
         }
     , dates = [ 1225807200000, 1352210400000, 1478613600000, 1604412000000 ]
     }
+
+
+example10 : Example
+example10 =
+    { description = "window.start is an off-day of an every-fifth-day event"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20201215T090000"
+        , "RRULE:FREQ=DAILY;INTERVAL=5"
+        ]
+    , recurrence =
+        { defaultRules
+            | dtStart = Time.millisToPosix 1608048000000
+            , frequency = Daily
+            , interval = 5
+        }
+    , window =
+        { start = (Time.millisToPosix 1608220800000 {- 2020-12-17T16:00:00.000Z -})
+        , end = (Time.millisToPosix 1613577600000 {- 2021-02-17T16:00:00.000Z -})
+        }
+    , dates = [ 1608480000000, 1608912000000, 1609344000000, 1609776000000, 1610208000000, 1610640000000, 1611072000000, 1611504000000, 1611936000000, 1612368000000, 1612800000000, 1613232000000 ]
+    }
+
+
+example11 : Example
+example11 =
+    { description = "window.start is an off-week of a tuesday-every-third-week event"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20201215T090000"
+        , "RRULE:FREQ=WEEKLY;INTERVAL=3"
+        ]
+    , recurrence =
+        { defaultRules
+            | dtStart = Time.millisToPosix 1608048000000
+            , frequency = Weekly
+            , interval = 3
+        }
+    , window =
+        { start = (Time.millisToPosix 1608566400000 {- 2020-12-21T16:00:00.000Z -})
+        , end = (Time.millisToPosix 1615132800000 {- 2021-03-07T16:00:00.000Z -})
+        }
+    , dates = [ 1609862400000, 1611676800000, 1613491200000 ]
+    }
+
+
+example12 : Example
+example12 =
+    { description = "window.start is an off-month of an every-other-month event"
+    , rrule =
+        [ "DTSTART;TZID=America/Chicago:20180703T170000"
+        , "RRULE:FREQ=MONTHLY;INTERVAL=2;BYDAY=1TU"
+        ]
+    , recurrence =
+        { defaultRules
+            | dtStart = Time.millisToPosix 1530655200000
+            , frequency = Monthly
+            , interval = 2
+            , byDay = [ Left ( 1, Tue ) ]
+            , tzid = TimeZone.america__chicago ()
+        }
+    , window =
+        { start = (Time.millisToPosix 1550886858009 {- 2019-02-23T01:54:18.009Z -})
+        , end = (Time.millisToPosix 1644198858009 {- 2022-02-07T01:54:18.009Z -})
+        }
+    , dates = [ 1551826800000, 1557266400000, 1562104800000, 1567548000000, 1572994800000, 1578438000000, 1583276400000, 1588716000000, 1594159200000, 1598997600000, 1604444400000, 1609887600000, 1614726000000, 1620165600000, 1625608800000, 1631052000000, 1635890400000, 1641337200000 ]
+    }
+
+
+example13 : Example
+example13 =
+    { description = "window.start in an off-year of an every-ten-year event"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20201215T090000"
+        , "RRULE:FREQ=YEARLY;INTERVAL=10"
+        ]
+    , recurrence =
+        { defaultRules
+            | dtStart = Time.millisToPosix 1608048000000
+            , frequency = Yearly
+            , interval = 10
+        }
+    , window =
+        { start = (Time.millisToPosix 1609804800000 {- 2021-01-05T00:00:00.000Z -})
+        , end = (Time.millisToPosix 1923609600000 {- 2030-12-16T00:00:00.000Z -})
+        }
+    , dates = [ 1923580800000 ]
+    }

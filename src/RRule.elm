@@ -23,16 +23,13 @@ import Util
 
 {-| -}
 type alias RRule =
-    { -- Required
-      frequency : Frequency
+    { frequency : Frequency
     , weekStart : Weekday
     , interval : Int
     , dtStart : Posix
 
     -- TODO Support floating times by having the user provide a fallback IANA / Zone?
     , tzid : Zone
-
-    -- Optional
     , untilCount : Maybe UntilCount
     , byDay : List (Either ( Int, Weekday ) Weekday)
     , byMonthDay : List Int
@@ -41,12 +38,6 @@ type alias RRule =
     , byYearDay : List Int
     , exdates : List Posix
     , rdates : List Posix
-
-    -- Currently not supported
-    --, bySecond : List Int
-    --, byMinute : List Int
-    --, byHour : List Int
-    --, bySetPos : List Int
     }
 
 

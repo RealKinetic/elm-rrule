@@ -80,7 +80,6 @@ custom =
         , Custom.example4
         , Custom.example5
         , Custom.example6
-        , Custom.example7
         ]
 
 

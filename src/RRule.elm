@@ -1323,7 +1323,9 @@ ianaTimezones =
     TimeZone.zones
         |> Dict.insert "UTC" (\() -> Time.utc)
         |> Dict.insert "Etc/GMT" (\() -> Time.utc)
+        |> Dict.insert "Etc/UTC" (\() -> Time.utc)
         |> Dict.insert "PST8PDT" TimeZone.america__los_angeles
+        |> Dict.insert "Asia/Calcutta" TimeZone.asia__kolkata
 
 
 parseTzid : String -> Parser Zone

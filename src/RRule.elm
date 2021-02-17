@@ -558,12 +558,13 @@ canOptimizeRun rrule =
                    The yearday of a given month&monthday will differ based on
                    whether it's a leap year.
                 -}
-                ( [ _ ], [ md ] ) ->
+                ( [ m ], [ md ] ) ->
                     (md >= 1
                      {- exclude negative numbers.
                         nth to last day of month will change if it's a leap year.
                      -}
                     )
+                        && (not <| m == 2 && md == 29 {- Exlude leap years -})
                         && List.isEmpty rrule.byYearDay
                         && List.isEmpty rrule.byWeekNo
                         && (List.isEmpty rrule.byDay

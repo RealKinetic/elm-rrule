@@ -220,3 +220,20 @@ example9 =
         , 1055509200000
         ]
     }
+
+
+{-| Le leap-year recurring event
+-}
+example10 =
+    { description = "Yearly recurring event that lands on leap year"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20200229T090000"
+        , "RRULE:FREQ=YEARLY;COUNT=5"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 5)
+            , dtStart = Time.millisToPosix 1582992000000
+        }
+    , dates = [ 1582992000000, 1709222400000, 1835452800000, 1961683200000, 2087913600000 ]
+    }

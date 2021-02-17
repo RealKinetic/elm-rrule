@@ -64,6 +64,12 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
         rrule =
             normalizeRRule preNormalizedRRule
 
+        check =
+            computeCheck rrule
+
+        firstInstance =
+            firstValidInstance rrule check
+
         ceiling =
             if Util.lt end Util.year2250 then
                 end
@@ -72,7 +78,8 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
                 Util.year2250
 
         runHelp { firstInstanceTime, startingWindow } =
-            run (hasNoExpands preNormalizedRRule)
+            run (canOptimizeRun rrule)
+                check
                 ceiling
                 rrule
                 startingWindow
@@ -86,13 +93,13 @@ between ({ start, end } as betweenWindow) preNormalizedRRule =
            relatively small COUNT.
         -}
         runHelp
-            { firstInstanceTime = rrule.dtStart
-            , startingWindow = initWindow rrule.dtStart rrule
+            { firstInstanceTime = firstInstance
+            , startingWindow = initWindow firstInstance rrule
             }
             |> List.filter (\time -> Util.gte time start)
 
     else
-        betweenHelper rrule betweenWindow
+        betweenHelper rrule check firstInstance betweenWindow
             |> Maybe.map runHelp
             |> Maybe.withDefault []
 
@@ -102,23 +109,58 @@ all preNormalizedRRule =
     let
         rrule =
             normalizeRRule preNormalizedRRule
+
+        check =
+            computeCheck rrule
+
+        firstInstance =
+            firstValidInstance rrule check
     in
-    run (hasNoExpands preNormalizedRRule)
+    run (canOptimizeRun rrule)
+        check
         Util.year2250
         rrule
-        (initWindow rrule.dtStart rrule)
-        rrule.dtStart
+        (initWindow firstInstance rrule)
+        firstInstance
         []
 
 
-run : Bool -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
-run rruleHasNoExpands timeCeiling rrule window current acc =
+firstValidInstance : RRule -> Check -> Posix
+firstValidInstance rrule check =
+    let
+        helper t =
+            if withinRuleset rrule check t then
+                t
+
+            else
+                helper (TE.add TE.Day 1 rrule.tzid t)
+    in
+    if rrule.interval /= 1 then
+        {- TODO Very hard to determine the first valid instance if interval > 1
+           In this case we just have to assume the dtStart is a valid instance.
+           We might think about adding decoding validation to catch this issue.
+
+              e.g., In the rrrule below, is the _current_ month the valid
+              "interval window" or is it the next month where our first valid
+              instance will be found?
+
+              RRULE:FREQ=MONTHLY,BYDAY=2FR,INTERVAL=2 (2nd Friday every other month)
+              Where our DTSTART is _after_ the 2nd Friday of the month.
+        -}
+        rrule.dtStart
+
+    else
+        helper rrule.dtStart
+
+
+run : Bool -> Check -> Posix -> RRule -> Window -> Posix -> List Posix -> List Posix
+run optimizedMode check timeCeiling rrule window current acc =
     let
         nextByDay =
             TE.add TE.Day 1 rrule.tzid current
 
         nextTime =
-            if rruleHasNoExpands then
+            if optimizedMode then
                 -- The vast majority of these will be YEARLY events, e.g. birthdays.
                 TE.add (freqToInterval rrule.frequency)
                     rrule.interval
@@ -157,26 +199,28 @@ run rruleHasNoExpands timeCeiling rrule window current acc =
         Util.dedupeAndSortTimes (acc ++ rrule.rdates)
             |> withoutExDates
 
-    else if current |> withinRuleset rrule then
+    else if current |> withinRuleset rrule check then
         {- Note: DO NOT partially apply `run` in the `let` statement above.
            We need to keep the full call to `run` down here for tail-call optimization.
         -}
-        run rruleHasNoExpands timeCeiling rrule nextWindow nextTime (current :: acc)
+        run optimizedMode check timeCeiling rrule nextWindow nextTime (current :: acc)
 
     else
-        run rruleHasNoExpands timeCeiling rrule nextWindow nextTime acc
+        run optimizedMode check timeCeiling rrule nextWindow nextTime acc
 
 
 {-| Rounds betweenWindow.start up to the nearest valid recurring instance time.
 -}
 betweenHelper :
     RRule
+    -> Check
+    -> Posix
     -> { start : Posix, end : Posix }
     -> Maybe { firstInstanceTime : Posix, startingWindow : Window }
-betweenHelper rrule { start, end } =
+betweenHelper rrule check firstInstance { start, end } =
     let
         mergeWithDTSTART =
-            Util.mergeTimeOf rrule.tzid rrule.dtStart
+            Util.mergeTimeOf rrule.tzid firstInstance
 
         mergedStartTime_ =
             mergeWithDTSTART start
@@ -201,7 +245,7 @@ betweenHelper rrule { start, end } =
 
             else if
                 Util.gte time start
-                    && (time |> withinRuleset rrule)
+                    && (time |> withinRuleset rrule check)
                     && inWindow time window
             then
                 {- Return time if it's greater than betweenWindow.start,
@@ -226,14 +270,14 @@ betweenHelper rrule { start, end } =
         -- Prevent neverending instance search if start > end
         Nothing
 
-    else if Util.gte rrule.dtStart start then
+    else if Util.gte firstInstance start then
         Just
-            { firstInstanceTime = rrule.dtStart
-            , startingWindow = initWindow rrule.dtStart rrule
+            { firstInstanceTime = firstInstance
+            , startingWindow = initWindow firstInstance rrule
             }
 
     else
-        findFirstInstance (initWindow rrule.dtStart rrule) mergedStartTime
+        findFirstInstance (initWindow firstInstance rrule) mergedStartTime
 
 
 {-| Information not contained in the rule necessary to determine the
@@ -265,7 +309,6 @@ normalizeRRule rrule =
             case ( rrule.byDay, rrule.byMonthDay ) of
                 ( [], [] ) ->
                     { rrule
-                      -- TODO Should this be byMonthDay or a `Left (_, _)` byDay?
                         | byMonthDay = [ Time.toDay rrule.tzid rrule.dtStart ]
                     }
 
@@ -326,9 +369,11 @@ hasCount rrule =
             False
 
 
-withinRuleset : RRule -> Posix -> Bool
-withinRuleset rrule time =
-    withinByRules rrule time
+{-| TODO Support rulesets
+-}
+withinRuleset : RRule -> Check -> Posix -> Bool
+withinRuleset =
+    withinByRules
 
 
 
@@ -374,23 +419,19 @@ type alias Check =
     }
 
 
-withinByRules : RRule -> Posix -> Bool
-withinByRules rrule time =
+withinByRules : RRule -> Check -> Posix -> Bool
+withinByRules rrule { limits, expands } time =
     let
         apply : ByRule -> Bool
         apply f =
             f rrule time
-
-        check : Check -> Bool
-        check { limits, expands } =
-            (not <| List.any (apply >> not) limits)
-                && List.all apply expands
     in
-    check <| withinByRulesHelp rrule
+    (not <| List.any (apply >> not) limits)
+        && List.all apply expands
 
 
-withinByRulesHelp : RRule -> Check
-withinByRulesHelp rrule =
+computeCheck : RRule -> Check
+computeCheck rrule =
     case rrule.frequency of
         Daily ->
             { limits = [ day, monthDay, month ]
@@ -466,31 +507,73 @@ and by1 by2 =
         by1 rrule_ time_ && by2 rrule_ time_
 
 
-hasNoExpands : RRule -> Bool
-hasNoExpands rrule =
+{-| This essentially checks if a given rrule has only one expanding BYRULE.
+
+A "non-optimized run" involves stepping up day-by-day and checking if the given
+day fits within the BYRULES. If an RRule has only one expanding BYRULE we can
+safely optimize, that is step up by the RRule's frequency rather than day-by-day.
+The greatly optimizes many weekly and monthly, and most yearly recurring events.
+e.g. Birthdays, holidays, meeting every 15th of the month.
+
+Note: This function must be handed a normalized rrule for optimization to work.
+
+-}
+canOptimizeRun : RRule -> Bool
+canOptimizeRun rrule =
     case rrule.frequency of
         Daily ->
             True
 
         Weekly ->
-            List.isEmpty rrule.byDay
+            case rrule.byDay of
+                [ _ ] ->
+                    True
+
+                _ ->
+                    False
 
         Monthly ->
-            List.isEmpty rrule.byMonthDay
-                && List.isEmpty rrule.byDay
+            case rrule.byMonthDay of
+                [ md ] ->
+                    {- Not every month has days 29, 30, or 31.
+                       Also, excludes negative numbers since e.g., 3rd to last
+                       day of the month is not always the same monthday.
+                    -}
+                    md >= 1 && md <= 28
+
+                _ ->
+                    {- In other cases we have to check day by day.
+                       e.g., If it's BYDAY=3FR, we can't add a month and assume
+                       we're on the third friday.
+                    -}
+                    False
 
         Yearly ->
-            -- See 'Note 2' above (byDay is a limit if BYYEARDAY or BYMONTHDAY is present)
-            if List.isEmpty rrule.byYearDay && List.isEmpty rrule.byMonthDay then
-                List.isEmpty rrule.byMonth
-                    && List.isEmpty rrule.byWeekNo
-                    && List.isEmpty rrule.byDay
+            case ( rrule.byMonth, rrule.byMonthDay ) of
+                {- We use Time.Extra.add in our stepwise optimization process.
+                   Time.Extra adds years by month/monthday not yearday.
 
-            else
-                List.isEmpty rrule.byMonth
-                    && List.isEmpty rrule.byWeekNo
-                    && List.isEmpty rrule.byYearDay
-                    && List.isEmpty rrule.byMonthDay
+                   e.g., 1 year + 20200320 == 20210320
+
+                   The yearday of a given month&monthday will differ based on
+                   whether it's a leap year.
+                -}
+                ( [ _ ], [ md ] ) ->
+                    (md >= 1
+                     {- exclude negative numbers.
+                        nth to last day of month will change if it's a leap year.
+                     -}
+                    )
+                        && List.isEmpty rrule.byYearDay
+                        && List.isEmpty rrule.byWeekNo
+                        && (List.isEmpty rrule.byDay
+                            {- We know byDay is an expand since byMonthDay is present.
+                               See 'Note 2' above
+                            -}
+                           )
+
+                _ ->
+                    False
 
 
 
@@ -1480,11 +1563,11 @@ chompDigits length =
 chompChars : Int -> Parser String
 chompChars length =
     P.getChompedString <|
-        P.loop 0 (helper length)
+        P.loop 0 (chompCharsHelper length)
 
 
-helper : Int -> Int -> Parser (Step Int Int)
-helper length count_ =
+chompCharsHelper : Int -> Int -> Parser (Step Int Int)
+chompCharsHelper length count_ =
     if length == count_ then
         P.succeed ()
             |> P.map (\_ -> Done count_)

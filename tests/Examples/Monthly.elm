@@ -357,7 +357,6 @@ example9 =
 {-| Every Friday the 13th, forever:
 
            DTSTART;TZID=America/New_York:19970902T090000
-           TODO why is this exdate in here?
            EXDATE;TZID=America/New_York:19970902T090000
            RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13
 

@@ -81,6 +81,9 @@ custom =
         , Custom.example5
         , Custom.example6
         , Custom.example7
+        , Custom.example8
+        , Custom.example9
+        , Custom.example10
         ]
 
 

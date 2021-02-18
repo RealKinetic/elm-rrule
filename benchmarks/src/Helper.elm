@@ -16,3 +16,10 @@ benchmarkExamples desc examples =
 benchmarkExample : Example -> Benchmark
 benchmarkExample { description, rrule, recurrence, dates } =
     benchmark description <| \_ -> RRule.all recurrence
+
+
+benchmarkExampleGroup : List Example -> BenchmarkProgram
+benchmarkExampleGroup examples =
+    always (List.map (\{ recurrence } -> RRule.all recurrence) examples)
+        |> benchmark "Group of rrules"
+        |> program

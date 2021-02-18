@@ -166,3 +166,74 @@ example7 =
         }
     , dates = [ 552117600000, 583740000000, 615276000000 ]
     }
+
+
+{-| Infer BYMONTHDAY on MONTHLY
+
+Checks the "31st of the month bug" where not every month has a 31st day.
+
+-}
+example8 =
+    { description = "Infer the monthday in a monthly event."
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20210731T160000"
+        , "RRULE:FREQ=MONTHLY;COUNT=5"
+        ]
+    , recurrence =
+        { defaultRules
+            | frequency = Monthly
+            , untilCount = Just (Count 5)
+            , dtStart = Time.millisToPosix 1627768800000
+        }
+    , dates = [ 1627768800000, 1630447200000, 1635717600000, 1640991600000, 1643670000000 ]
+    }
+
+
+{-| Every Friday the 13th, forever:
+Alternative apporach to Monthly.example10 "Every Friday the 13th"
+-}
+example9 =
+    { description = "Every Friday the 13th"
+    , rrule =
+        [ "DTSTART;TZID=America/New_York:19970902T090000"
+        , "RRULE:FREQ=YEARLY;BYDAY=FR;BYMONTHDAY=13;COUNT=10"
+        ]
+    , recurrence =
+        { defaultRules
+            | frequency = Yearly
+            , tzid = TimeZone.america__new_york ()
+            , untilCount = Just (Count 10)
+            , dtStart = Time.millisToPosix 873205200000
+            , byMonthDay = [ 13 ]
+            , byDay = [ Right Fri ]
+        }
+    , dates =
+        [ 887378400000
+        , 889797600000
+        , 910965600000
+        , 934549200000
+        , 971442000000
+        , 987166800000
+        , 995029200000
+        , 1031922000000
+        , 1039788000000
+        , 1055509200000
+        ]
+    }
+
+
+{-| Le leap-year recurring event
+-}
+example10 =
+    { description = "Yearly recurring event that lands on leap year"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20200229T090000"
+        , "RRULE:FREQ=YEARLY;COUNT=5"
+        ]
+    , recurrence =
+        { defaultRules
+            | untilCount = Just (Count 5)
+            , dtStart = Time.millisToPosix 1582992000000
+        }
+    , dates = [ 1582992000000, 1709222400000, 1835452800000, 1961683200000, 2087913600000 ]
+    }

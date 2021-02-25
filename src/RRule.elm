@@ -1000,7 +1000,7 @@ rawRRulesToRecurrence zone { dtStart, rrule_, exdate_, rdate_ } =
         |> andMap (byMonth rrule_)
         |> andMap (byWeekNo rrule_)
         |> andMap (byYearDay rrule_)
-        |> andMap (exdates exdate_)
+        |> andMap (exdates zone exdate_)
         |> andMap (succeed [])
 
 
@@ -1350,11 +1350,12 @@ getEXDATE =
     Decoder <| find False EXDATE "EXDATE"
 
 
-exdates : EXDATE -> Decoder (List Posix)
-exdates (EXDATE exdateString) =
+exdates : Zone -> EXDATE -> Decoder (List Posix)
+exdates zone (EXDATE exdateString) =
     -- TODO Default to UTC if TZID doesn't exist?
     P.oneOf
-        [ P.succeed Tuple.pair
+        [ ifEmptyString []
+        , P.succeed Tuple.pair
             |. chompThrough "TZID"
             |. P.symbol "="
             |= (P.chompUntil ":"
@@ -1364,12 +1365,25 @@ exdates (EXDATE exdateString) =
             |. P.symbol ":"
             |= list parseDateTime
             |> P.map
-                (\( zone, exdates_ ) ->
-                    List.map (TE.partsToPosix zone) exdates_
+                (\( exdateZone, exdates_ ) ->
+                    List.map (TE.partsToPosix exdateZone) exdates_
                 )
-        , P.succeed []
+        , P.succeed identity
+            |. chompThrough "VALUE"
+            |. P.symbol "="
+            |. chompThrough "DATE"
+            |. P.symbol ":"
+            |= list parseDateToParts
+            |> P.map (List.map (TE.partsToPosix zone))
         ]
         |> runParserOn exdateString
+
+
+{-| TODO Should we just returning a (Maybe EXDATE) rather than (EXDATE "")?
+-}
+ifEmptyString : a -> Parser a
+ifEmptyString fallback =
+    P.end |> P.map (always fallback)
 
 
 
@@ -1598,7 +1612,7 @@ deadEndToString deadEnd =
     in
     case deadEnd.problem of
         Expecting str ->
-            "Expecting " ++ str ++ "at " ++ position
+            "Expecting " ++ str ++ " at " ++ position
 
         ExpectingInt ->
             "ExpectingInt at " ++ position

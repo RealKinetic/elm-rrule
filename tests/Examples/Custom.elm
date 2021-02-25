@@ -237,3 +237,26 @@ example10 =
         }
     , dates = [ 1582992000000, 1709222400000, 1835452800000, 1961683200000, 2087913600000 ]
     }
+
+
+{-| All day exdates
+-}
+example11 =
+    { description = "All day exdates"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20200621"
+        , "RRULE:FREQ=WEEKLY;UNTIL=20200801;BYDAY=SU"
+        , "EXDATE;VALUE=DATE:20200705,20200712"
+        ]
+    , recurrence =
+        { defaultRules
+            | frequency = Weekly
+            , untilCount = Just (Until <| Time.millisToPosix 1596261600000)
+            , dtStart = Time.millisToPosix 1592719200000
+            , byDay = [ Right Sun ]
+            , exdates =
+                [ 1593928800000, 1594533600000 ]
+                    |> List.map Time.millisToPosix
+        }
+    , dates = [ 1592719200000, 1593324000000, 1595138400000, 1595743200000 ]
+    }

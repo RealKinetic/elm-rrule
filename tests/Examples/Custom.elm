@@ -260,3 +260,22 @@ example11 =
         }
     , dates = [ 1592719200000, 1593324000000, 1595138400000, 1595743200000 ]
     }
+
+
+{-| An alternate approach to monthly events
+-}
+example12 =
+    { description = "Monthly events using YEARLY + BYMONTHDAY"
+    , rrule =
+        [ "DTSTART;TZID=America/Denver:20080701"
+        , "RRULE:FREQ=YEARLY;BYMONTHDAY=1;COUNT=10"
+        ]
+    , recurrence =
+        { defaultRules
+            | frequency = Yearly
+            , untilCount = Just (Count 10)
+            , dtStart = Time.millisToPosix 1214892000000
+            , byMonthDay = [ 1 ]
+        }
+    , dates = [ 1214892000000, 1217570400000, 1220248800000, 1222840800000, 1225519200000, 1228114800000, 1230793200000, 1233471600000, 1235890800000, 1238565600000 ]
+    }

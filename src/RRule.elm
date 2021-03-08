@@ -340,12 +340,6 @@ normalizeRRule rrule =
                         | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
                     }
 
-                ( ( [], _ :: _ ), ( [], [], [] ) ) ->
-                    -- with only byMonthDay we infer the month
-                    { rrule
-                        | byMonth = [ Date.monthToNumber <| Time.toMonth rrule.tzid rrule.dtStart ]
-                    }
-
                 ( ( [], [] ), ( [], _ :: _, [] ) ) ->
                     -- with only byWeekNo we infer the weekday
                     { rrule

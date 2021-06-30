@@ -8,6 +8,7 @@ module RRule exposing
     , errorToString
     , fromStrings
     , fromStringsWithStart
+    , ianaTimezones
     )
 
 import Date exposing (Date, Month)

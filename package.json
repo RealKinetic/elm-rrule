@@ -1,5 +1,5 @@
 {
-  "name": "elm-rrule",
+  "name": "@witful/elm-rrule",
   "version": "1.0.0",
   "main": "index.js",
   "author": "Coury Ditch <coury.ditch@realkinetic.com>",

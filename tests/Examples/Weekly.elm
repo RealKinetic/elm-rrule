@@ -1,6 +1,7 @@
 module Examples.Weekly exposing (..)
 
 import Either exposing (Either(..))
+import Examples.Types exposing (Example)
 import RRule exposing (Frequency(..), RRule, UntilCount(..))
 import Time exposing (Weekday(..))
 import TimeZone
@@ -36,6 +37,7 @@ defaultRules =
      (1997 9:00 AM EST)October 28;November 4
 
 -}
+example1 : Example
 example1 =
     { description = "Weekly for 10 occurrences"
     , rrule =
@@ -58,6 +60,7 @@ example1 =
         , 878047200000
         , 878652000000
         ]
+    , text = ""
     }
 
 
@@ -70,6 +73,7 @@ example1 =
      (1997 9:00 AM EST)October 28;November 4,11,18,25;December 2,9,16,23;
 
 -}
+example2 : Example
 example2 =
     { description = "Weekly until December 24, 1997"
     , rrule =
@@ -99,6 +103,7 @@ example2 =
         , 882280800000
         , 882885600000
         ]
+    , text = ""
     }
 
 
@@ -112,6 +117,7 @@ example2 =
     (1998 9:00 AM EST)January 6,20;
 
 -}
+example3 : Example
 example3 =
     { description = "Every other week 11 occurences"
     , rrule =
@@ -137,6 +143,7 @@ example3 =
         , 884095200000
         , 885304800000
         ]
+    , text = ""
     }
 
 
@@ -148,6 +155,7 @@ RRULE:FREQ=WEEKLY;UNTIL=19971007T000000Z;WKST=SU;BYDAY=TU,TH
 (1997 9:00 AM EDT)September 2,4,9,11,16,18,23,25,30;October 2
 
 -}
+example4_1 : Example
 example4_1 =
     { description = "Weekly on Tuesday and Thursday for 5 weeks w/ UNTIL"
     , rrule =
@@ -172,6 +180,7 @@ example4_1 =
         , 875624400000
         , 875797200000
         ]
+    , text = ""
     }
 
 
@@ -183,6 +192,7 @@ RRULE:FREQ=WEEKLY;COUNT=10;WKST=SU;BYDAY=TU,TH
 (1997 9:00 AM EDT)September 2,4,9,11,16,18,23,25,30;October 2
 
 -}
+example4_2 : Example
 example4_2 =
     { description = "Weekly on Tuesday and Thursday for 5 weeks w/ COUNT"
     , rrule =
@@ -207,6 +217,7 @@ example4_2 =
         , 875624400000
         , 875797200000
         ]
+    , text = ""
     }
 
 
@@ -219,6 +230,7 @@ example4_2 =
     (1997 9:00 AM EST)October 27,29,31;November 10,12,14,24,26,28;December 8,10,12,22
 
 -}
+example5 : Example
 example5 =
     { description = "Every other week on Monday, Wednesday and Friday until December 24, 1997, but starting on Tuesday, September 2, 1997"
     , rrule =
@@ -258,6 +270,7 @@ example5 =
         , 881935200000
         , 882799200000
         ]
+    , text = ""
     }
 
 
@@ -269,6 +282,7 @@ example5 =
     (1997 9:00 AM EDT)September 2,4,16,18,30;October 2,14,16
 
 -}
+example6 : Example
 example6 =
     { description = "Every other week on Tuesday and Thursday, for 8 occurrences"
     , rrule =
@@ -292,6 +306,7 @@ example6 =
         , 876834000000
         , 877006800000
         ]
+    , text = ""
     }
 
 

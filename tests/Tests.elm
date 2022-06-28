@@ -13,15 +13,16 @@ import Test exposing (Test, describe)
 import Time exposing (Posix)
 
 
-daily : Test
-daily =
-    testExamples "Daily"
-        [ Daily.example1
-        , Daily.example2
-        , Daily.example3
-        , Daily.example4
-        , Daily.example5
-        ]
+
+--daily : Test
+--daily =
+--    testExamples "Daily"
+--        [ Daily.example1
+--        , Daily.example2
+--        , Daily.example3
+--        , Daily.example4
+--        , Daily.example5
+--        ]
 
 
 weekly : Test
@@ -71,43 +72,45 @@ yearly =
         ]
 
 
-custom : Test
-custom =
-    testExamples "Custom"
-        [ Custom.example1
-        , Custom.example2
-        , Custom.example3
-        , Custom.example4
-        , Custom.example5
-        , Custom.example6
-        , Custom.example7
-        , Custom.example8
-        , Custom.example9
-        , Custom.example10
-        , Custom.example11
-        , Custom.example12
-        ]
 
-
-suite : Test
-suite =
-    testBetweens
-        [ Between.example1
-        , Between.example2
-        , Between.example3
-        , Between.example4
-        , Between.example5
-        , Between.example6
-        , Between.example7
-        , Between.example8_1
-        , Between.example8_2
-        , Between.example8_3
-        , Between.example9
-        , Between.example10
-        , Between.example11
-        , Between.example12
-        , Between.example13
-        ]
+--
+--custom : Test
+--custom =
+--    testExamples "Custom"
+--        [ Custom.example1
+--        , Custom.example2
+--        , Custom.example3
+--        , Custom.example4
+--        , Custom.example5
+--        , Custom.example6
+--        , Custom.example7
+--        , Custom.example8
+--        , Custom.example9
+--        , Custom.example10
+--        , Custom.example11
+--        , Custom.example12
+--        ]
+--
+--
+--suite : Test
+--suite =
+--    testBetweens
+--        [ Between.example1
+--        , Between.example2
+--        , Between.example3
+--        , Between.example4
+--        , Between.example5
+--        , Between.example6
+--        , Between.example7
+--        , Between.example8_1
+--        , Between.example8_2
+--        , Between.example8_3
+--        , Between.example9
+--        , Between.example10
+--        , Between.example11
+--        , Between.example12
+--        , Between.example13
+--        ]
 
 
 testExamples : String -> List Example -> Test
@@ -118,14 +121,18 @@ testExamples tipe recurrenceTests =
 testExample : Example -> Test
 testExample { description, rrule, recurrence, dates } =
     describe description
-        [ Test.test "Generator.run : Recurrence -> List Posix" <|
+        [ --Test.test "RRule.all" <|
+          --    \_ ->
+          --        RRule.all recurrence
+          --            |> Expect.equal (List.map Time.millisToPosix dates)
+          --, Test.test "RRule.fromStrings" <|
+          --    \_ ->
+          --        RRule.fromStrings rrule
+          --            |> Expect.equal (Ok recurrence)
+          --,
+          Test.test "RRule.toText" <|
             \_ ->
-                RRule.all recurrence
-                    |> Expect.equal (List.map Time.millisToPosix dates)
-        , Test.test "Decoder.toRecurrence : String -> Recurrence" <|
-            \_ ->
-                RRule.fromStrings rrule
-                    |> Expect.equal (Ok recurrence)
+                RRule.toText recurrence |> Expect.equal ""
         ]
 
 

@@ -9,13 +9,16 @@ module RRule exposing
     , fromStrings
     , fromStringsWithStart
     , ianaTimezones
+    , toText
     )
 
 import Date exposing (Date, Month)
 import Dict
 import Either exposing (Either(..))
+import Ordinal
 import Parser as P exposing ((|.), (|=), DeadEnd, Parser, Problem(..), Step(..))
 import Set
+import String.Extra
 import Time exposing (Month(..), Posix, Weekday(..), Zone)
 import Time.Extra as TE exposing (Interval(..))
 import TimeZone
@@ -124,6 +127,18 @@ all preNormalizedRRule =
         (initWindow firstInstance rrule)
         firstInstance
         []
+
+
+toText : RRule -> String
+toText =
+    normalizeRRule
+        >> toTextHelp
+        >> List.filter (String.isEmpty >> not)
+        >> String.join " "
+
+
+
+-- Internal
 
 
 firstValidInstance : RRule -> Check -> Posix
@@ -1648,3 +1663,228 @@ deadEndToString deadEnd =
 
         BadRepeat ->
             "BadRepeat at " ++ position
+
+
+
+-- toText
+{- Text examples
+
+   ['Every day', 'RRULE:FREQ=DAILY'],
+   ['Every week', 'RRULE:FREQ=WEEKLY'],
+   ['Every week on Tuesday', 'RRULE:FREQ=WEEKLY;BYDAY=TU'],
+   ['Every week on Monday, Wednesday', 'RRULE:FREQ=WEEKLY;BYDAY=MO,WE'],
+   ['Every weekday', 'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'],
+   ['Every 2 weeks', 'RRULE:INTERVAL=2;FREQ=WEEKLY'],
+   ['Every month', 'RRULE:FREQ=MONTHLY'],
+   ['Every 6 months', 'RRULE:INTERVAL=6;FREQ=MONTHLY'],
+   ['Every year', 'RRULE:FREQ=YEARLY'],
+   ['Every year on the 1st Friday', 'RRULE:FREQ=YEARLY;BYDAY=+1FR'],
+   ['Every year on the 13th Friday', 'RRULE:FREQ=YEARLY;BYDAY=+13FR'],
+   ['Every month on the 4th', 'RRULE:FREQ=MONTHLY;BYMONTHDAY=4'],
+   ['Every month on the 4th last', 'RRULE:FREQ=MONTHLY;BYMONTHDAY=-4'],
+   ['Every month on the 3rd Tuesday', 'RRULE:FREQ=MONTHLY;BYDAY=+3TU'],
+   ['Every month on the 3rd last Tuesday', 'RRULE:FREQ=MONTHLY;BYDAY=-3TU'],
+   ['Every month on the last Monday', 'RRULE:FREQ=MONTHLY;BYDAY=-1MO'],
+   ['Every month on the 2nd last Friday', 'RRULE:FREQ=MONTHLY;BYDAY=-2FR'],
+   ['Every week until January 1, 2007', 'RRULE:FREQ=WEEKLY;UNTIL=20070101T080000Z'],
+   ['Every week for 20 times', 'RRULE:FREQ=WEEKLY;COUNT=20'],
+
+-}
+-- TODO bymonthday
+-- TODO byyearday
+
+
+toTextHelp : RRule -> List String
+toTextHelp rrule =
+    let
+        untilCountText =
+            untilCountToText rrule
+
+        startHelp adjectiveUnit nounUnit =
+            case rrule.interval of
+                1 ->
+                    adjectiveUnit
+
+                2 ->
+                    "Every other " ++ nounUnit
+
+                _ ->
+                    "Every " ++ String.fromInt rrule.interval ++ " " ++ nounUnit ++ "s"
+    in
+    case rrule.frequency of
+        Daily ->
+            [ startHelp "Daily" "day"
+            , untilCountText
+            ]
+
+        Weekly ->
+            [ startHelp "Weekly" "week"
+            , weeklyByDayText rrule.byDay
+            , untilCountText
+            ]
+
+        Monthly ->
+            [ startHelp "Monthly" "month"
+            , monthlyByDayText rrule.byDay
+            , byMonthText rrule.byMonthDay
+            , untilCountText
+            ]
+
+        Yearly ->
+            [ startHelp "Yearly" "year"
+            , untilCountText
+            ]
+
+
+weeklyByDayText : List (Either ( Int, Weekday ) Weekday) -> String
+weeklyByDayText byDay_ =
+    let
+        -- 'Weekly' doesn't include ordinal BYDAY rules
+        days =
+            List.filterMap
+                (\eitherDay ->
+                    case eitherDay of
+                        Left _ ->
+                            Nothing
+
+                        Right wd ->
+                            Just wd
+                )
+                byDay_
+    in
+    case days of
+        [] ->
+            ""
+
+        [ day_ ] ->
+            "on " ++ weekdayToTextLong day_
+
+        -- Use short weekday text if there is more than one weekday to save space.
+        days_ ->
+            "on " ++ (String.Extra.toSentenceOxford <| List.map weekdayToTextShort days_)
+
+
+monthlyByDayText : List (Either ( Int, Weekday ) Weekday) -> String
+monthlyByDayText byDay_ =
+    let
+        {- TODO change the prepending text (e.g., "on the ") depending on the
+           the types of byday
+           e.g. These are not right:
+           "Every 2 months on the Tueday for 20 months"
+           "Every month on the Saturday on the 7th, 8th, 9th, 10th, 11th, 12th, and 13th for 10 months"
+           "Every month on the Friday on the 13th for 10 months"
+        -}
+        textParts =
+            List.filterMap
+                (\day_ ->
+                    case day_ of
+                        Left ( ordinal, weekday_ ) ->
+                            if ordinal > 0 then
+                                Just (Ordinal.ordinal ordinal ++ " " ++ weekdayToTextLong weekday_)
+
+                            else if ordinal == -1 then
+                                Just ("last " ++ weekdayToTextLong weekday_)
+
+                            else
+                                Just (Ordinal.ordinal (abs ordinal) ++ " last " ++ weekdayToTextLong weekday_)
+
+                        Right wd ->
+                            Just <| weekdayToTextLong wd
+                )
+                byDay_
+    in
+    textParts
+        |> String.Extra.toSentenceOxford
+        |> (++) (if_ (List.isEmpty textParts) "" "on the ")
+
+
+byMonthText : List Int -> String
+byMonthText monthDays_ =
+    monthDays_
+        |> List.map
+            (\monthDay_ ->
+                if monthDay_ > 0 then
+                    Ordinal.ordinal monthDay_
+
+                else if monthDay_ == -1 then
+                    "last day"
+
+                else
+                    Ordinal.ordinal (abs monthDay_) ++ " to last"
+            )
+        |> String.Extra.toSentenceOxford
+        |> (++) (if_ (List.isEmpty monthDays_) "" "on the ")
+
+
+weekdayToTextLong : Weekday -> String
+weekdayToTextLong weekday_ =
+    case weekday_ of
+        Mon ->
+            "Monday"
+
+        Tue ->
+            "Tuesday"
+
+        Wed ->
+            "Wednesday"
+
+        Thu ->
+            "Thursday"
+
+        Fri ->
+            "Friday"
+
+        Sat ->
+            "Saturday"
+
+        Sun ->
+            "Sunday"
+
+
+weekdayToTextShort : Weekday -> String
+weekdayToTextShort weekday_ =
+    case weekday_ of
+        Mon ->
+            "Mon"
+
+        Tue ->
+            "Tue"
+
+        Wed ->
+            "Wed"
+
+        Thu ->
+            "Thu"
+
+        Fri ->
+            "Fri"
+
+        Sat ->
+            "Sat"
+
+        Sun ->
+            "Sun"
+
+
+untilCountToText : RRule -> String
+untilCountToText rrule =
+    case rrule.untilCount of
+        Just (Count count_) ->
+            "(" ++ String.fromInt count_ ++ if_ (count_ == 1) " time)" " times)"
+
+        Just (Until until_) ->
+            "until " ++ Date.format "MMMM ddd, y" (Date.fromPosix rrule.tzid until_)
+
+        Nothing ->
+            ""
+
+
+{-| Ternary helper
+-}
+if_ : Bool -> a -> a -> a
+if_ cond a b =
+    if cond then
+        a
+
+    else
+        b

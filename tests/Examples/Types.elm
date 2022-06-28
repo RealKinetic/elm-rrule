@@ -8,4 +8,5 @@ type alias Example =
     , rrule : List String
     , recurrence : RRule
     , dates : List Int
+    , text : String
     }

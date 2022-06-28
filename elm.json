@@ -12,9 +12,11 @@
         "elm/core": "1.0.2 <= v < 2.0.0",
         "elm/parser": "1.1.0 <= v < 2.0.0",
         "elm/time": "1.0.0 <= v < 2.0.0",
+        "elm-community/string-extra": "4.0.1 <= v < 5.0.0",
         "justinmimbs/date": "3.2.1 <= v < 4.0.0",
         "justinmimbs/time-extra": "1.1.0 <= v < 2.0.0",
         "justinmimbs/timezone-data": "3.0.3 <= v < 4.0.0",
+        "lynn/elm-ordinal": "1.0.4 <= v < 2.0.0",
         "toastal/either": "3.5.2 <= v < 4.0.0"
     },
     "test-dependencies": {
